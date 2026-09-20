@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kantak243 | Freelance Developer</title>
+<meta name="description" content="実用的なアプリ・自動化ツールを作るフリーランス開発者 kantak243 のポートフォリオ">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --bg-card: #131722;
+    --border: #232838;
+    --text: #e6e8ee;
+    --text-dim: #9aa1b2;
+    --accent: #5b8cff;
+    --accent-soft: rgba(91, 140, 255, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Hiragino Sans, "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 20px 40px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--accent), #a45bff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+  }
+  .tagline {
+    color: var(--text-dim);
+    font-size: 16px;
+    margin: 0 0 20px;
+  }
+  .cta {
+    display: inline-flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-block;
+    padding: 10px 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  section {
+    margin-bottom: 40px;
+  }
+  h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 16px;
+  }
+  .services {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .card h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+  }
+  .card p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .projects {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .project {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .project:hover { border-color: var(--accent); }
+  .project .meta {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .project .arrow {
+    color: var(--accent);
+    font-size: 18px;
+  }
+  .links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .link-chip {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 8px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-top: 48px;
+  }
+  @media (max-width: 480px) {
+    .services { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="avatar">K</div>
+      <h1>kantak243</h1>
+      <p class="tagline">実用的なアプリ・自動化ツールを開発するフリーランスエンジニア</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="mailto:kantak243@gmail.com?subject=お仕事のご相談">お仕事の相談をする</a>
+        <a class="btn btn-secondary" href="https://github.com/kantak243-del">GitHubを見る</a>
+      </div>
+    </header>
+
+    <section>
+      <h2>対応できること</h2>
+      <div class="services">
+        <div class="card">
+          <h3>Webアプリ開発</h3>
+          <p>要件整理から実装まで一気通貫で対応</p>
+        </div>
+        <div class="card">
+          <h3>業務自動化</h3>
+          <p>定型作業をスクリプト・Botで効率化</p>
+        </div>
+        <div class="card">
+          <h3>API連携</h3>
+          <p>外部サービス・決済・AI APIの統合</p>
+        </div>
+        <div class="card">
+          <h3>MVP開発</h3>
+          <p>アイデアを最短で動くプロダクトに</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>実績・プロジェクト</h2>
+      <div class="projects">
+        <a class="project" href="https://github.com/kantak243-del?tab=repositories">
+          <div>
+            <div>公開リポジトリ一覧</div>
+            <div class="meta">これまでのプロジェクトはこちら</div>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2>リンク</h2>
+      <div class="links">
+        <a class="link-chip" href="mailto:kantak243@gmail.com">✉ メール</a>
+        <a class="link-chip" href="https://github.com/kantak243-del">GitHub</a>
+      </div>
+    </section>
+
+    <footer>
+      &copy; 2026 kantak243 — Available for freelance work
+    </footer>
+  </div>
+</body>
+</html>
