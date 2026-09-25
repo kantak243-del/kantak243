@@ -250,6 +250,8 @@
   }
   .quest-tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .quest-tabs button[data-q="zelga"][aria-selected="true"] { background: #1f2c46; border-color: #1f2c46; }
+  .quest-tabs button[data-q="agniva"][aria-selected="true"] { background: #6a1a10; border-color: #6a1a10; }
+  .quest-tabs button[data-q="xenogia"][aria-selected="true"] { background: #3a2a58; border-color: #3a2a58; }
   .quest-tabs button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
   .q-advice { margin: 0; font-size: 12px; font-weight: 700; color: var(--blood); }
   .weapon-line b { color: var(--ink); }
@@ -269,8 +271,7 @@
   }
   #saveToast.show { opacity: 1; }
   #testBadge {
-    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-    transform: translateX(-50%);
+    position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 56px);
     padding: 4px 10px; border-radius: 3px;
     background: #2a6f3a; color: #fff; font: 700 12px/1.3 var(--body); letter-spacing: 0.06em;
     pointer-events: none; white-space: nowrap;
@@ -342,6 +343,8 @@
     <div class="quest-tabs" role="tablist" aria-label="クエストを選ぶ">
       <button type="button" role="tab" data-q="valg">★4 焔尾竜</button>
       <button type="button" role="tab" data-q="zelga">★6 蒼雷竜</button>
+      <button type="button" role="tab" data-q="agniva">★8 獄炎竜</button>
+      <button type="button" role="tab" data-q="xenogia">★10 天冥竜</button>
     </div>
     <div class="q-head"><span class="q-rank" id="qRank">★4 狩猟クエスト</span><span class="stamp">受注</span></div>
     <h1 id="qTitle">焔尾竜討伐</h1>
@@ -421,7 +424,7 @@
   </div>
 </div>
 <div id="saveToast"></div>
-<div id="testBadge" hidden>テスト版：主人公は無敵・本番のセーブとは別</div>
+<div id="testBadge" hidden title="主人公は無敵。本番のセーブとは別に保存">テスト版・無敵</div>
 <div id="errBox" hidden></div>
 <button id="focusGuard" type="button" hidden>キー操作が届いていません ─ ここをクリックして再開</button>
 
@@ -840,6 +843,7 @@
       hp: 2800, size: 1, dmg: 1, speed: 1, turn: 1, tempo: 1, flinch: 240, tailHp: 320, enrageAt: 0.6, hornLen: 1.7,
       colors: { scale: 0x6a2c20, belly: 0xa9845e, dark: 0x2a1a15, spike: 0x3a1c14, glow: 0xff5a1a, eye: 0xffc23a, eyeRage: 0xff3a1a, mouth: 0xffa040, blood: 0x9a1a10 },
       wings: false, reward: 7200, hrp: 100,
+      moves: ["bite", "tailSpin", "charge", "fireball"], biteCombo: 0, fireballs: [1, 3], strikes: 0,
       drops: ["scale", "scale", "scale", "shell", "shell", "fang", "claw", "crystal", "sac"], tailItem: "tail", orb: "orb",
       env: { fog: 0xc79a74, top: 0x5d6a80, sun: 0xffc48a, hemi: 0xffe2c0, ash: [0xff8a3a, 0xb8aca0] },
       place: "灰霧の谷", advice: "推奨：はじめての狩りに",
@@ -850,11 +854,35 @@
       hp: 4600, size: 1.18, dmg: 1.35, speed: 1.2, turn: 1.35, tempo: 1.12, flinch: 380, tailHp: 520, enrageAt: 0.75, hornLen: 2.5,
       colors: { scale: 0x1f2c46, belly: 0x7d93a8, dark: 0x10141f, spike: 0x18223a, glow: 0x4fc3ff, eye: 0xaef4ff, eyeRage: 0xffffff, mouth: 0x9fe8ff, blood: 0x2a4a8a },
       wings: true, reward: 12000, hrp: 200,
+      moves: ["bite", "tailSpin", "charge", "thunder", "pounce"], biteCombo: 1, fireballs: [0, 0], strikes: 4,
       drops: ["zscale", "zscale", "zscale", "zshell", "zshell", "zhorn", "zwing", "crystal"], tailItem: "ztail", orb: "zorb",
       env: { fog: 0x6f7c8c, top: 0x262e40, sun: 0xcfe0ff, hemi: 0xc8d8f0, ash: [0x9fe8ff, 0x8a96a6] },
       place: "灰霧の谷（嵐の夜）", advice: "推奨：太刀の強化3段階以上。かなり手強い",
       note: "依頼主：谷の見張り番 ─ 嵐と一緒に、蒼い雷をまとった竜が降りてきた。焔尾竜とは格が違う。地面に光る輪が出たら雷が落ちる合図だ。翼で跳びかかってもくるぞ。",
     },
+  };
+  SPECIES.agniva = {
+    id: "agniva", name: "獄炎竜 アグニヴァ", full: "獄炎竜アグニヴァ", short: "アグニヴァ", rank: "★8", quest: "獄炎竜討伐",
+    hp: 7200, size: 1.3, dmg: 1.6, speed: 1.28, turn: 1.5, tempo: 1.18, flinch: 560, tailHp: 800, enrageAt: 0.8, hornLen: 2.4,
+    colors: { scale: 0x1c1414, belly: 0x5a2a22, dark: 0x0c0808, spike: 0x2a0c08, glow: 0xff3a10, eye: 0xff7a2f, eyeRage: 0xffe07a, mouth: 0xff7a2f, blood: 0x7a1008 },
+    wings: true, reward: 25000, hrp: 350,
+    moves: ["bite", "tailSpin", "charge", "fireball", "pounce", "pillars", "nova"], biteCombo: 2, fireballs: [3, 5], strikes: 5,
+    drops: ["ascale", "ascale", "ascale", "ashell", "ashell", "ahorn", "awing", "sac"], tailItem: "atail", orb: "acore",
+    env: { fog: 0x4a2420, top: 0x160a0a, sun: 0xff9a6a, hemi: 0xffb08a, ash: [0xff5a1a, 0x6a5a55] },
+    place: "灰霧の谷（燃える夜）", advice: "推奨：太刀の強化6段階以上。火柱と大爆発に注意",
+    note: "依頼主：谷の見張り番 ─ 焔尾竜の群れを喰らった黒い竜が現れた。火球は3つ同時、地面から火柱が噴き、体の周りが赤く光ったら大爆発だ。すぐに離れろ。",
+  };
+  SPECIES.xenogia = {
+    id: "xenogia", name: "天冥竜 ゼノギア", full: "天冥竜ゼノギア", short: "ゼノギア", rank: "★10", quest: "天冥竜討伐",
+    hp: 11000, size: 1.45, dmg: 2.0, speed: 1.38, turn: 1.7, tempo: 1.25, flinch: 800, tailHp: 1200, enrageAt: 0.9, hornLen: 3.0,
+    colors: { scale: 0x2b2238, belly: 0xc9b27a, dark: 0x120e1a, spike: 0x1e1430, glow: 0xb07cff, eye: 0xe2c8ff, eyeRage: 0xffe27a, mouth: 0xd8b8ff, blood: 0x4a1a6a },
+    wings: true, reward: 50000, hrp: 600,
+    moves: ["bite", "tailSpin", "charge", "fireball", "pounce", "thunder", "pillars", "nova"], biteCombo: 2, fireballs: [3, 5], strikes: 6,
+    awaken: { glow: 0xffd24a, eye: 0xffffff },
+    drops: ["xscale", "xscale", "xscale", "xshell", "xshell", "xhorn", "xwing", "crystal"], tailItem: "xtail", orb: "xorb",
+    env: { fog: 0x2a2440, top: 0x0a0814, sun: 0xd8c8ff, hemi: 0xb8a8e8, ash: [0xffd24a, 0xa08cff] },
+    place: "灰霧の谷（星の落ちる夜）", advice: "推奨：最高段階の太刀。体力が半分を切ると覚醒する",
+    note: "依頼主：谷の見張り番 ─ 空が割れ、星と共に降りてきた竜がいる。雷も炎も操る。体力が半分を切ると覚醒し、星が降り注ぐ。生きて帰れるかは分からない。",
   };
   let SP = SPECIES.valg;
 
@@ -1041,7 +1069,8 @@
     Object.assign(M, {
       pos: new V3(0, 0, -12), yaw: 0.3, hp: SP.hp, maxHp: SP.hp, state: "idle", stateT: 0, t: 0,
       aware: false, enraged: false, enrageT: 0, enrageAcc: 0, firstEnrage: false, pendingEnrage: false, limp: false,
-      flinchAcc: 0, flinchTh: SP.flinch, tailHp: SP.tailHp, tailCut: false, air: 0, comboLeft: 0, jump: null, landed: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
+      flinchAcc: 0, flinchTh: SP.flinch, tailHp: SP.tailHp, tailCut: false, air: 0, comboLeft: 0, jump: null, landed: false,
+      awake: false, pendingAwake: false, awakeRoar: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
       wander: null, wanderWait: 0, spinBase: 0, chargeDist: 0, fired: false, roared: false, totalDmg: 0,
       stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false,
       pose: { neckX: -0.15, neckY: 0, jaw: 0.05, tiltZ: 0, tiltX: 0, tiltY: 0, legOut: 0, tailCurl: 0, wing: 0 },
@@ -1519,7 +1548,7 @@
     h.legL.rotation.x = pose.legL;
     h.legR.rotation.x = pose.legR;
     // 溜めの光
-    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 6 ? 0x0a3050 : save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
+    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 10 ? 0x2a0a50 : save.weaponLv >= 8 ? 0x500800 : save.weaponLv >= 6 ? 0x0a3050 : save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
     h.bladeMat.emissive.setHex(glow);
     // 無敵中は少し点滅
     h.root.visible = !(P.state !== "dodge" && P.iframe > 0 && P.state !== "faint" && Math.floor(P.iframe * 16) % 2 === 0 && P.iframe < 1.5 && P.state !== "down");
@@ -1591,6 +1620,13 @@
   // ================= 竜の動き =================
   function setMState(s) { M.state = s; M.stateT = 0; M.hitDone = false; M.fired = false; M.roared = false; }
   function setEnragedLook(on) {
+    if (M.awake && SP.awaken) {
+      mon.spikeM.emissive.setHex(SP.awaken.glow);
+      mon.eyeM.color.setHex(SP.awaken.eye);
+      $("monState").textContent = "覚醒";
+      return;
+    }
+    mon.spikeM.emissive.setHex(SP.colors.glow).convertSRGBToLinear();
     mon.eyeM.color.setHex(on ? SP.colors.eyeRage : SP.colors.eye);
     $("monState").textContent = on ? "怒り" : (M.limp ? "瀕死" : "");
   }
@@ -1613,6 +1649,7 @@
       showMsg(`${SP.short}が足を引きずっている！`);
       $("monState").textContent = M.enraged ? "怒り" : "瀕死";
     }
+    if (SP.awaken && !M.awake && !M.pendingAwake && M.hp < M.maxHp * 0.5) M.pendingAwake = true;
     if (!M.enraged && ((!M.firstEnrage && M.hp < M.maxHp * SP.enrageAt) || (M.firstEnrage && M.enrageAcc > 750 * SP.size))) M.pendingEnrage = true;
     if (M.flinchAcc >= M.flinchTh && !["roar", "dead", "stagger", "flinch"].includes(M.state)) {
       M.flinchAcc = 0; M.flinchTh *= 1.25;
@@ -1647,20 +1684,16 @@
   }
 
   function chooseAttack(dist, ang) {
-    const a = Math.abs(ang), r = Math.random();
-    if (SP.id === "zelga") {
-      const z = SP.size;
-      if (dist > 8 && r < 0.12) return "thunder"; // 向きに関係なく雷を落とす
-      if (dist < 6.5 * z && a < 0.7) return r < 0.6 ? "bite" : "tailSpin";
-      if (dist < 7.5 * z && a > 1.1) return r < 0.75 ? "tailSpin" : "thunder";
-      if (dist > 11 && a < 0.6) return r < 0.4 ? "pounce" : r < 0.75 ? "thunder" : "charge";
-      if (dist >= 6.5 * z && a < 0.5 && r < 0.45) return r < 0.25 ? "pounce" : "charge";
-      return null;
-    }
-    if (dist < 6.5 && a < 0.7) return r < 0.62 ? "bite" : "tailSpin";
-    if (dist < 7.5 && a > 1.1) return "tailSpin";
-    if (dist > 13 && a < 0.5) return r < (M.enraged ? 0.45 : 0.6) ? "charge" : "fireball";
-    if (dist >= 7 && dist <= 13 && a < 0.4 && r < 0.3) return M.enraged && r < 0.15 ? "fireball" : "charge";
+    const a = Math.abs(ang), r = Math.random(), z = SP.size;
+    const has = (m) => SP.moves.includes(m);
+    const pick = (list) => { const ok = list.filter(has); return ok.length ? ok[(Math.random() * ok.length) | 0] : null; };
+    if (M.awake && dist > 5 && r < 0.14) return "starfall";
+    if (has("nova") && dist < 8 * z && r < (M.enraged ? 0.16 : 0.08)) return "nova";
+    if (dist > 8 && r < 0.12) { const m = pick(["thunder", "pillars"]); if (m) return m; }
+    if (dist < 6.5 * z && a < 0.7) return r < 0.6 ? "bite" : "tailSpin";
+    if (dist < 7.5 * z && a > 1.1) return r < 0.75 ? "tailSpin" : (pick(["nova", "thunder", "pillars"]) || "tailSpin");
+    if (dist > 13 && a < 0.5) return pick(["pounce", "thunder", "pillars", "fireball", "charge", "charge"]);
+    if (dist >= 7 * z && a < 0.45 && r < 0.4) return pick(["pounce", "charge", "fireball"]);
     return null;
   }
 
@@ -1704,7 +1737,7 @@
         emit(p, 0xff7a2f, 40, 8, { life: 0.6, grav: 4 });
         emit(p, 0xffe0a0, 15, 5, { life: 0.4, grav: 2 });
         sfx.boom();
-        if (Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < 3.2) hitPlayer(30, true, p.x - f.vx * 0.1, p.z - f.vz * 0.1);
+        if (Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < 3.2) hitPlayer(Math.round(30 * SP.dmg), true, p.x - f.vx * 0.1, p.z - f.vz * 0.1);
         cam.shake = Math.max(cam.shake, 0.25);
         scene.remove(f.mesh);
         f.mesh.geometry.dispose();
@@ -1716,41 +1749,73 @@
   const ringGeo = new THREE.RingGeometry(0.85, 1, 40);
   ringGeo.rotateX(-Math.PI / 2);
   const boltGeo = new THREE.CylinderGeometry(0.22, 0.4, 40, 6);
-  function spawnStrike(x, z, delay) {
-    const r = 2.4;
-    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: SP.colors.glow, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+  // 予兆の輪 → 一定時間後に当たる攻撃（落雷・火柱・周囲の大爆発）
+  const STRIKE = {
+    bolt: { ring: 0x6fd0ff, core: 0xe8fbff, burst: 0x6fd0ff, dmg: 34, r: 2.4 },
+    fire: { ring: 0xff7a2a, core: 0xffc070, burst: 0xff5a1a, dmg: 34, r: 2.7 },
+    nova: { ring: 0xff2a10, core: null, burst: 0xff5a1a, dmg: 60, r: 8 },
+  };
+  function spawnStrike(x, z, delay, kind = "bolt", radius) {
+    const K = STRIKE[kind];
+    const r = radius || K.r;
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: K.ring, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
     ring.position.set(x, groundH(x, z) + 0.08, z);
     ring.scale.setScalar(r * 0.3);
     scene.add(ring);
-    hazards.push({ x, z, r, delay, t: 0, ring, bolt: null, struck: false });
+    hazards.push({ x, z, r, delay, t: 0, ring, bolt: null, struck: false, kind });
+  }
+  function scatterStrikes(n, kinds, spread, delay0, gap) {
+    for (let i = 0; i < n; i++) {
+      let x = P.pos.x, z = P.pos.z;
+      if (i > 0) {
+        const a = Math.random() * TAU, d = 2.5 + Math.random() * spread;
+        x += Math.cos(a) * d; z += Math.sin(a) * d;
+      }
+      spawnStrike(x, z, delay0 + i * gap, kinds[i % kinds.length]);
+    }
   }
   function updateHazards(dt) {
     for (let i = hazards.length - 1; i >= 0; i--) {
       const h = hazards[i];
+      const K = STRIKE[h.kind];
       h.t += dt;
       if (!h.struck) {
         const k = clamp(h.t / h.delay, 0, 1);
         h.ring.scale.setScalar(h.r * (0.3 + 0.7 * k));
         h.ring.material.opacity = 0.35 + 0.6 * Math.abs(Math.sin(h.t * (6 + k * 18)));
+        if (h.kind === "nova") { h.x = M.pos.x; h.z = M.pos.z; h.ring.position.set(h.x, groundH(h.x, h.z) + 0.08, h.z); }
         if (h.t >= h.delay) {
           h.struck = true;
-          h.bolt = new THREE.Mesh(boltGeo, new THREE.MeshBasicMaterial({ color: 0xe8fbff, fog: false }));
-          h.bolt.position.set(h.x, groundH(h.x, h.z) + 20, h.z);
-          scene.add(h.bolt);
-          const at = tmpV2.set(h.x, groundH(h.x, h.z) + 0.5, h.z);
-          emit(at, SP.colors.glow, 30, 9, { life: 0.5, grav: 6 });
-          emit(at, 0xffffff, 12, 5, { life: 0.3, grav: 2 });
-          sfx.thunder();
-          cam.shake = Math.max(cam.shake, 0.35);
-          if (Math.hypot(P.pos.x - h.x, P.pos.z - h.z) < h.r + 0.3) hitPlayer(Math.round(34 * SP.dmg), true, h.x, h.z);
+          const gy = groundH(h.x, h.z);
+          if (K.core) {
+            h.bolt = new THREE.Mesh(boltGeo, new THREE.MeshBasicMaterial({ color: K.core, fog: false }));
+            h.bolt.position.set(h.x, gy + 20, h.z);
+            if (h.kind === "fire") h.bolt.scale.set(3, 1, 3);
+            scene.add(h.bolt);
+          }
+          const at = tmpV2.set(h.x, gy + 0.5, h.z);
+          if (h.kind === "nova") {
+            for (let j = 0; j < 36; j++) {
+              const a = (j / 36) * TAU;
+              emit(tmpV2.set(h.x + Math.cos(a) * h.r * 0.6, gy + 1, h.z + Math.sin(a) * h.r * 0.6), K.burst, 3, 7, { life: 0.7, grav: 2 });
+            }
+            sfx.boom(); sfx.roar();
+            cam.shake = 1;
+          } else {
+            emit(at, K.burst, 30, 9, { life: 0.5, grav: 6 });
+            emit(at, 0xffffff, 12, 5, { life: 0.3, grav: 2 });
+            if (h.kind === "bolt") sfx.thunder(); else { sfx.boom(); sfx.fire(); }
+            cam.shake = Math.max(cam.shake, 0.35);
+          }
+          if (Math.hypot(P.pos.x - h.x, P.pos.z - h.z) < h.r + 0.3) hitPlayer(Math.round(K.dmg * SP.dmg), true, h.x, h.z);
         }
       } else {
-        const k = (h.t - h.delay) / 0.25;
-        h.bolt.scale.x = h.bolt.scale.z = Math.max(0.05, 1 - k);
+        const k = (h.t - h.delay) / 0.3;
+        if (h.bolt) { const w = Math.max(0.05, 1 - k) * (h.kind === "fire" ? 3 : 1); h.bolt.scale.x = h.bolt.scale.z = w; }
         h.ring.material.opacity = Math.max(0, 0.8 - k);
         if (k >= 1) {
-          scene.remove(h.ring); scene.remove(h.bolt);
-          h.ring.material.dispose(); h.bolt.material.dispose();
+          scene.remove(h.ring); h.ring.material.dispose();
+          if (h.bolt) { scene.remove(h.bolt); h.bolt.material.dispose(); }
           hazards.splice(i, 1);
         }
       }
@@ -1758,7 +1823,7 @@
   }
 
   function updateMonster(dt) {
-    const ts = (M.enraged ? 1.18 : 1) * SP.tempo;
+    const ts = (M.enraged ? 1.18 : 1) * SP.tempo * (M.awake ? 1.1 : 1);
     M.t += dt;
     M.stateT += dt * ts;
     if (M.enraged) {
@@ -1796,6 +1861,7 @@
       }
       case "chase": {
         if (!targetable) { setMState("idle"); break; }
+        if (M.pendingAwake) { M.pendingAwake = false; M.pendingEnrage = false; setMState("roar"); M.awakeRoar = true; break; }
         if (M.pendingEnrage) { M.pendingEnrage = false; setMState("roar"); M.enrageRoar = true; break; }
         M.atkCd -= dt;
         M.yaw = turnToward(M.yaw, toP, 1.7 * spMul * SP.turn / SP.speed * dt);
@@ -1806,7 +1872,7 @@
             setMState(atk);
             if (atk === "tailSpin") M.spinBase = M.yaw;
             if (atk === "charge") M.chargeDist = 0;
-            if (atk === "bite") M.comboLeft = SP.id === "zelga" ? (M.enraged ? 2 : 1) : 0;
+            if (atk === "bite") M.comboLeft = SP.biteCombo + (M.enraged && SP.biteCombo > 0 ? 1 : 0);
             if (atk === "pounce") { M.jump = null; M.landed = false; }
           } else M.atkCd = 0.25;
         }
@@ -1869,29 +1935,43 @@
         } else if (!M.fired) {
           M.fired = true;
           sfx.fire();
-          if (M.enraged) [-0.28, 0, 0.28].forEach(spawnFireball); else spawnFireball(0);
+          const n = SP.fireballs[M.enraged ? 1 : 0] || 1;
+          for (let i = 0; i < n; i++) spawnFireball((i - (n - 1) / 2) * 0.26);
         }
         if (T >= 1.5) endAttack();
         break;
       }
-      case "thunder": {
-        if (T < 0.9) {
+      case "thunder":
+      case "pillars":
+      case "starfall": {
+        const star = M.state === "starfall";
+        const wind = star ? 1.2 : 0.9;
+        const glow = M.state === "pillars" ? 0xff6a2a : star ? 0xffd24a : 0x6fd0ff;
+        if (T < wind) {
           M.yaw = turnToward(M.yaw, toP, 2 * dt);
-          if (Math.random() < 0.7) { mon.hits.head.getWorldPosition(tmpV2); tmpV2.y += 1.2; emit(tmpV2, SP.colors.glow, 2, 3, { life: 0.3, grav: 0, spread: 1.5 }); }
-          if (!M.fired && T > 0.1) { M.fired = true; sfx.charge(3); }
+          if (Math.random() < 0.7) { mon.hits.head.getWorldPosition(tmpV2); tmpV2.y += 1.2; emit(tmpV2, glow, 2, 3, { life: 0.3, grav: 0, spread: 1.5 }); }
+          if (!M.fired && T > 0.1) { M.fired = true; sfx.charge(3); if (star) showMsg("星が降ってくる！", true); }
         } else if (!M.roared) {
           M.roared = true;
-          const n = M.enraged ? 6 : 4;
-          for (let i = 0; i < n; i++) {
-            let x = P.pos.x, z = P.pos.z;
-            if (i > 0) {
-              const a = Math.random() * TAU, d = 3 + Math.random() * 6;
-              x += Math.cos(a) * d; z += Math.sin(a) * d;
-            }
-            spawnStrike(x, z, 1.0 + i * 0.14);
-          }
+          const n = SP.strikes + (M.enraged ? 2 : 0);
+          if (star) scatterStrikes(12, ["bolt", "fire"], 11, 0.9, 0.11);
+          else scatterStrikes(n, [M.state === "pillars" ? "fire" : "bolt"], 6, 1.0, 0.14);
         }
-        if (T >= 2.0) endAttack();
+        if (T >= (star ? 3.0 : 2.0)) endAttack();
+        break;
+      }
+      case "nova": {
+        if (!M.fired) {
+          M.fired = true;
+          spawnStrike(M.pos.x, M.pos.z, 1.2, "nova", 7.5 * SP.size);
+          sfx.charge(2);
+          showMsg(`${SP.short}の体が赤く光っている！`, true);
+        }
+        if (Math.random() < 0.8) {
+          const sp = mon.spikes[(Math.random() * mon.spikes.length) | 0];
+          sp.getWorldPosition(tmpV2); emit(tmpV2, 0xff5a1a, 2, 2, { life: 0.5, grav: -4 });
+        }
+        if (T >= 2.3) endAttack();
         break;
       }
       case "pounce": {
@@ -1929,6 +2009,13 @@
           M.roared = true;
           sfx.roar();
           cam.shake = 0.6;
+          if (M.awakeRoar) {
+            M.awakeRoar = false; M.awake = true; M.enraged = true; M.firstEnrage = true; M.enrageT = 1e9;
+            setEnragedLook(true);
+            cam.shake = 1.2;
+            emit(tmpV2.set(M.pos.x, M.pos.y + 3, M.pos.z), SP.awaken.glow, 80, 12, { life: 1, grav: 1 });
+            showMsg(`${SP.short}が覚醒した！`, true);
+          }
           if (M.enrageRoar) {
             M.enrageRoar = false; M.enraged = true; M.firstEnrage = true; M.enrageT = 40; M.enrageAcc = 0;
             setEnragedLook(true);
@@ -1981,7 +2068,7 @@
       if (M.flameT <= 0) {
         M.flameT = 0.04;
         const s = mon.spikes[(Math.random() * mon.spikes.length) | 0];
-        if (!(M.tailCut && (s.userData.seg ?? -1) >= 3)) { s.getWorldPosition(tmpV2); emit(tmpV2, SP.colors.glow, 1, 1, { life: 0.7, grav: -3 }); }
+        if (!(M.tailCut && (s.userData.seg ?? -1) >= 3)) { s.getWorldPosition(tmpV2); emit(tmpV2, M.awake ? SP.awaken.glow : SP.colors.glow, 1, 1, { life: 0.7, grav: -3 }); }
       }
     }
 
@@ -2025,8 +2112,14 @@
         else if (T < 0.95) { t.neckX = 0.3; t.jaw = 0.9; }
         else t.neckX = -0.05;
         break;
+      case "nova":
+        if (T < 1.2) { t.neckX = 0.45; t.tiltY = -0.45; t.wing = 1; t.jaw = 0.3; }
+        else { t.neckX = -0.8; t.jaw = 1.1; t.wing = 1; }
+        break;
+      case "pillars":
+      case "starfall":
       case "thunder":
-        if (T < 0.9) { t.neckX = -0.9; t.jaw = 0.6; t.wing = 1; t.tiltX = -0.08; mon.mouthGlow.visible = true; mon.mouthGlow.scale.setScalar(0.5 + T); }
+        if (T < (M.state === "starfall" ? 1.2 : 0.9)) { t.neckX = -0.9; t.jaw = 0.6; t.wing = 1; t.tiltX = -0.08; mon.mouthGlow.visible = true; mon.mouthGlow.scale.setScalar(0.5 + T); }
         else { t.neckX = -0.3; t.jaw = 1.0; t.wing = 0.6; }
         break;
       case "pounce":
@@ -2069,7 +2162,7 @@
       s.rotation.y = tailSway * (1 + i * 0.25) + ps.tailCurl * (0.4 + i * 0.1);
     });
     // 怒りで棘が脈打つ
-    mon.spikeM.emissiveIntensity = M.enraged ? 0.8 + Math.sin(M.t * 8) * 0.4 : 0.15;
+    mon.spikeM.emissiveIntensity = M.state === "nova" ? 1.6 + Math.sin(M.t * 30) * 0.6 : M.enraged ? 0.8 + Math.sin(M.t * 8) * 0.4 : 0.15;
 
     // 斬り落とした尻尾
     if (droppedTail && !droppedTail.landed) {
@@ -2132,8 +2225,10 @@
     scale: "焔尾竜の鱗", shell: "焔尾竜の甲殻", fang: "焔尾竜の牙", claw: "焔尾竜の爪",
     crystal: "灰霧の結晶", sac: "焔尾竜の火炎袋", tail: "焔尾竜の尻尾", orb: "焔竜玉",
     zscale: "蒼雷竜の鱗", zshell: "蒼雷竜の甲殻", zhorn: "蒼雷竜の角", zwing: "蒼雷竜の翼膜", ztail: "蒼雷竜の尻尾", zorb: "雷竜玉",
+    ascale: "獄炎竜の鱗", ashell: "獄炎竜の甲殻", ahorn: "獄炎竜の角", awing: "獄炎竜の翼膜", atail: "獄炎竜の尻尾", acore: "獄炎核",
+    xscale: "天冥竜の鱗", xshell: "天冥竜の甲殻", xhorn: "天冥竜の角", xwing: "天冥竜の翼膜", xtail: "天冥竜の尻尾", xorb: "天冥玉",
   };
-  const RARE = new Set(["tail", "orb", "ztail", "zorb"]);
+  const RARE = new Set(["tail", "orb", "ztail", "zorb", "atail", "acore", "xtail", "xorb"]);
   const WEAPONS = [
     { name: "鉄刀", atk: 100 },
     { name: "鉄刀【改】", atk: 115, cost: { scale: 3, fang: 1 }, z: 3000 },
@@ -2142,6 +2237,10 @@
     { name: "焔尾大刀【灼】", atk: 172, cost: { orb: 1, sac: 3, crystal: 4 }, z: 15000 },
     { name: "蒼雷刀ゼルガ", atk: 196, cost: { zscale: 4, zshell: 3, zhorn: 2 }, z: 20000 },
     { name: "雷刃【轟】", atk: 225, cost: { zorb: 1, zwing: 3, ztail: 1, orb: 1 }, z: 32000 },
+    { name: "獄炎刀アグニヴァ", atk: 255, cost: { ascale: 4, ashell: 3, ahorn: 2 }, z: 45000 },
+    { name: "獄炎刀【焦天】", atk: 285, cost: { acore: 1, awing: 3, atail: 1, zorb: 1 }, z: 60000 },
+    { name: "天冥刀ゼノギア", atk: 320, cost: { xscale: 5, xshell: 3, xhorn: 2 }, z: 90000 },
+    { name: "極星刃【天冥】", atk: 360, cost: { xorb: 1, xwing: 3, xtail: 1, acore: 1 }, z: 120000 },
   ];
   const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg" });
   const normalizeSave = (s) => {
@@ -2230,7 +2329,7 @@
       m: {
         x: M.pos.x, z: M.pos.z, yaw: M.yaw, hp: M.hp, aware: M.aware, enraged: M.enraged, enrageT: M.enrageT,
         enrageAcc: M.enrageAcc, firstEnrage: M.firstEnrage, limp: M.limp, flinchTh: M.flinchTh,
-        tailHp: M.tailHp, tailCut: M.tailCut, totalDmg: M.totalDmg,
+        tailHp: M.tailHp, tailCut: M.tailCut, totalDmg: M.totalDmg, awake: M.awake,
       },
     };
   }
