@@ -240,6 +240,17 @@
   .profile small { font-size: 10px; letter-spacing: 0.08em; color: #7a4a22; font-weight: 700; }
   .profile b { font-family: var(--num); font-size: 18px; font-variant-numeric: tabular-nums; }
   .weapon-line { margin: 0; font-size: 13px; color: #4a3a2c; }
+  .quest-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .quest-tabs button {
+    appearance: none; cursor: pointer;
+    padding: 10px 8px; border-radius: 3px;
+    border: 1px solid rgba(23, 19, 15, 0.35); background: transparent; color: var(--ink);
+    font: 400 14px/1 var(--display); letter-spacing: 0.04em;
+  }
+  .quest-tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .quest-tabs button[data-q="zelga"][aria-selected="true"] { background: #1f2c46; border-color: #1f2c46; }
+  .quest-tabs button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .q-advice { margin: 0; font-size: 12px; font-weight: 700; color: var(--blood); }
   .weapon-line b { color: var(--ink); }
   .btn small { display: block; margin-top: 6px; font: 400 12px/1 var(--body); letter-spacing: 0.04em; opacity: 0.8; }
   .btn.alt { background: #6b3a1c; }
@@ -270,8 +281,10 @@
     font: 700 15px/1.4 var(--body); cursor: pointer; white-space: nowrap;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 920px) {
     .monster-panel { top: calc(env(safe-area-inset-top, 0px) + 84px); width: min(64vw, 300px); }
+  }
+  @media (max-width: 640px) {
     .hunter-panel { padding: 8px 10px; }
     .hint { display: none; }
   }
@@ -294,12 +307,12 @@
   </div>
 </div>
 <div class="monster-panel" id="monPanel" hidden>
-  <div class="mon-name">焔尾竜 ヴァルグ <em id="monState"></em></div>
-  <div class="bar" aria-label="ヴァルグの体力"><i id="mhpFill"></i></div>
+  <div class="mon-name"><span id="monName">焔尾竜 ヴァルグ</span> <em id="monState"></em></div>
+  <div class="bar" aria-label="竜の体力"><i id="mhpFill"></i></div>
 </div>
 <div class="hint" id="hint" hidden>
-  WASD 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック長押し/K 溜め斬り<br>
-  Space 回避 ・ R 回復薬 ・ Q 注目 ・ マウス/矢印キー カメラ ・ P 一時停止
+  WASD/矢印キー 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック長押し/K 溜め斬り<br>
+  Space 回避 ・ R 回復薬 ・ Q 注目 ・ マウス カメラ ・ P 一時停止
 </div>
 <div id="hurtFx"></div>
 <div id="dmgLayer"></div>
@@ -318,22 +331,27 @@
 
 <div class="overlay" id="titleScreen">
   <div class="quest">
-    <div class="q-head"><span class="q-rank">★4 狩猟クエスト</span><span class="stamp">受注</span></div>
-    <h1>焔尾竜討伐</h1>
+    <div class="quest-tabs" role="tablist" aria-label="クエストを選ぶ">
+      <button type="button" role="tab" data-q="valg">★4 焔尾竜</button>
+      <button type="button" role="tab" data-q="zelga">★6 蒼雷竜</button>
+    </div>
+    <div class="q-head"><span class="q-rank" id="qRank">★4 狩猟クエスト</span><span class="stamp">受注</span></div>
+    <h1 id="qTitle">焔尾竜討伐</h1>
     <div class="profile">
       <div><small>ハンターランク</small><b id="pfHr">1</b></div>
       <div><small>討伐数</small><b id="pfClears">0</b></div>
-      <div><small>最速</small><b id="pfBest">--:--</b></div>
+      <div><small id="pfBestLabel">最速</small><b id="pfBest">--:--</b></div>
       <div><small>所持金</small><b id="pfZenny">0z</b></div>
     </div>
     <p class="weapon-line">装備：<b id="pfWeapon">鉄刀</b>（攻撃力 <span id="pfAtk">100</span>）</p>
     <dl class="q-meta">
-      <div><dt>目的</dt><dd>焔尾竜ヴァルグ 1頭の狩猟</dd></div>
-      <div><dt>狩猟地</dt><dd>灰霧の谷</dd></div>
+      <div><dt>目的</dt><dd id="qTarget">焔尾竜ヴァルグ 1頭の狩猟</dd></div>
+      <div><dt>狩猟地</dt><dd id="qPlace">灰霧の谷</dd></div>
       <div><dt>失敗条件</dt><dd>3回力尽きる</dd></div>
-      <div><dt>報酬金</dt><dd>7,200z</dd></div>
+      <div><dt>報酬金</dt><dd id="qReward">7,200z</dd></div>
     </dl>
-    <p class="q-note">依頼主：谷の見張り番 ─ 尻尾に火を宿した竜が谷に居座っている。弱点は頭、尻尾は斬り落とせるはずだ。怒ると火球を吐くから気をつけろ。</p>
+    <p class="q-note" id="qNote"></p>
+    <p class="q-advice" id="qAdvice"></p>
     <div class="controls" id="ctlDesk">
       <span><kbd>WASD</kbd><kbd>↑↓←→</kbd>移動</span>
       <span><kbd>Shift</kbd>ダッシュ</span>
@@ -459,7 +477,8 @@
   scene.fog = new THREE.Fog(FOG, 40, 150);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
 
-  scene.add(new THREE.HemisphereLight(0xffe2c0, 0x3a2e24, 0.8));
+  const hemi = new THREE.HemisphereLight(0xffe2c0, 0x3a2e24, 0.8);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffc48a, 1.7);
   sun.castShadow = true;
   const SM = isTouch ? 1024 : 2048;
@@ -747,6 +766,7 @@
     clear() { [523, 659, 784, 1047].forEach((f, i) => osc("triangle", f, null, 0.4, 0.12, i * 0.14)); },
     fail() { [392, 330, 262].forEach((f, i) => osc("triangle", f, null, 0.5, 0.12, i * 0.2)); },
     cut() { noise(0.3, 0.4, 3000, 400); osc("square", 180, 60, 0.3, 0.1); },
+    thunder() { noise(0.12, 0.5, 6000, 2000, "highpass"); noise(0.9, 0.45, 600, 50, "lowpass", 0.05); osc("sawtooth", 70, 35, 0.8, 0.12); },
   };
 
   // ================= ハンター =================
@@ -803,15 +823,40 @@
   const hunter = buildHunter();
 
   // ================= 竜 =================
-  function buildMonster() {
+  const SPECIES = {
+    valg: {
+      id: "valg", name: "焔尾竜 ヴァルグ", full: "焔尾竜ヴァルグ", short: "ヴァルグ", rank: "★4", quest: "焔尾竜討伐",
+      hp: 2800, size: 1, dmg: 1, speed: 1, turn: 1, tempo: 1, flinch: 240, tailHp: 320, enrageAt: 0.6, hornLen: 1.7,
+      colors: { scale: 0x6a2c20, belly: 0xa9845e, dark: 0x2a1a15, spike: 0x3a1c14, glow: 0xff5a1a, eye: 0xffc23a, eyeRage: 0xff3a1a, mouth: 0xffa040, blood: 0x9a1a10 },
+      wings: false, reward: 7200, hrp: 100,
+      drops: ["scale", "scale", "scale", "shell", "shell", "fang", "claw", "crystal", "sac"], tailItem: "tail", orb: "orb",
+      env: { fog: 0xc79a74, top: 0x5d6a80, sun: 0xffc48a, hemi: 0xffe2c0, ash: [0xff8a3a, 0xb8aca0] },
+      place: "灰霧の谷", advice: "推奨：はじめての狩りに",
+      note: "依頼主：谷の見張り番 ─ 尻尾に火を宿した竜が谷に居座っている。弱点は頭、尻尾は斬り落とせるはずだ。怒ると火球を吐くから気をつけろ。",
+    },
+    zelga: {
+      id: "zelga", name: "蒼雷竜 ゼルガ", full: "蒼雷竜ゼルガ", short: "ゼルガ", rank: "★6", quest: "蒼雷竜討伐",
+      hp: 4600, size: 1.18, dmg: 1.35, speed: 1.2, turn: 1.35, tempo: 1.12, flinch: 380, tailHp: 520, enrageAt: 0.75, hornLen: 2.5,
+      colors: { scale: 0x1f2c46, belly: 0x7d93a8, dark: 0x10141f, spike: 0x18223a, glow: 0x4fc3ff, eye: 0xaef4ff, eyeRage: 0xffffff, mouth: 0x9fe8ff, blood: 0x2a4a8a },
+      wings: true, reward: 12000, hrp: 200,
+      drops: ["zscale", "zscale", "zscale", "zshell", "zshell", "zhorn", "zwing", "crystal"], tailItem: "ztail", orb: "zorb",
+      env: { fog: 0x6f7c8c, top: 0x262e40, sun: 0xcfe0ff, hemi: 0xc8d8f0, ash: [0x9fe8ff, 0x8a96a6] },
+      place: "灰霧の谷（嵐の夜）", advice: "推奨：太刀の強化3段階以上。かなり手強い",
+      note: "依頼主：谷の見張り番 ─ 嵐と一緒に、蒼い雷をまとった竜が降りてきた。焔尾竜とは格が違う。地面に光る輪が出たら雷が落ちる合図だ。翼で跳びかかってもくるぞ。",
+    },
+  };
+  let SP = SPECIES.valg;
+
+  function buildMonster(sp) {
+    const C = sp.colors;
     const root = new THREE.Group();
     const tilt = new THREE.Group(); root.add(tilt);
-    const scaleM = mat(0x6a2c20, { roughness: 0.7 });
-    const bellyM = mat(0xa9845e);
+    const scaleM = mat(C.scale, { roughness: 0.7 });
+    const bellyM = mat(C.belly);
     const boneM = mat(0xe8dcc2, { roughness: 0.5 });
-    const darkM = mat(0x2a1a15);
-    const spikeM = mat(0x3a1c14, { emissive: new THREE.Color(0xff5a1a), emissiveIntensity: 0.15 });
-    const eyeM = new THREE.MeshBasicMaterial({ color: 0xffc23a });
+    const darkM = mat(C.dark);
+    const spikeM = mat(C.spike, { emissive: new THREE.Color(C.glow), emissiveIntensity: 0.15 });
+    const eyeM = new THREE.MeshBasicMaterial({ color: C.eye });
     const S = (r, w = 16, h = 12) => new THREE.SphereGeometry(r, w, h);
 
     const torso = mesh(S(1), scaleM, 0, 2.7, 0); torso.scale.set(1.75, 1.4, 3.0); tilt.add(torso);
@@ -842,12 +887,12 @@
     jaw.add(mesh(new THREE.BoxGeometry(0.85, 0.28, 1.5), bellyM, 0, -0.12, 0.75));
     for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) jaw.add(mesh(new THREE.ConeGeometry(0.06, 0.22, 4), boneM, sx * 0.35, 0.08, 0.4 + i * 0.3));
     for (const sx of [-1, 1]) {
-      const horn = mesh(new THREE.ConeGeometry(0.2, 1.7, 6), boneM, sx * 0.5, 0.5, -0.1);
+      const horn = mesh(new THREE.ConeGeometry(0.2 * sp.hornLen / 1.7, sp.hornLen, 6), sp.wings ? spikeM : boneM, sx * 0.5, 0.5, -0.1 - (sp.hornLen - 1.7) * 0.4);
       horn.rotation.x = -1.2; horn.rotation.z = sx * -0.25;
       head.add(horn);
       head.add(mesh(S(0.1, 8, 6), eyeM, sx * 0.44, 0.22, 0.95));
     }
-    const mouthGlow = new THREE.Mesh(S(0.35, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9, fog: false }));
+    const mouthGlow = new THREE.Mesh(S(0.35, 10, 8), new THREE.MeshBasicMaterial({ color: C.mouth, transparent: true, opacity: 0.9, fog: false }));
     mouthGlow.position.set(0, -0.15, 1.7); mouthGlow.visible = false; head.add(mouthGlow);
 
     const legs = [];
@@ -890,6 +935,24 @@
       parent.add(sp); spikes.push(sp);
     }
 
+    // 翼（蒼雷竜）
+    const wings = [];
+    if (sp.wings) {
+      const memM = mat(C.dark, { side: THREE.DoubleSide, emissive: new THREE.Color(C.glow), emissiveIntensity: 0.08, transparent: true, opacity: 0.92 });
+      for (const side of [-1, 1]) {
+        const g = new THREE.Group(); g.position.set(side * 1.1, 3.9, 0.9); tilt.add(g);
+        const geo = new THREE.BufferGeometry();
+        const v = [0, 0, 0.9, side * 4.2, 0.5, -0.2, side * 2.6, 0, -2.4, 0, 0, 0.9, side * 2.6, 0, -2.4, 0, 0, -1.4];
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+        geo.computeVertexNormals();
+        const mem = new THREE.Mesh(geo, memM); mem.castShadow = true; g.add(mem);
+        const arm = mesh(new THREE.CylinderGeometry(0.1, 0.16, 4.3, 5), scaleM, side * 2.1, 0.28, 0.35);
+        arm.rotation.z = Math.PI / 2; arm.rotation.y = side * 0.15; g.add(arm);
+        const claw = mesh(new THREE.ConeGeometry(0.1, 0.5, 4), boneM, side * 4.25, 0.5, -0.2); claw.rotation.z = -side * Math.PI / 2; g.add(claw);
+        wings.push({ g, side });
+      }
+    }
+
     const helper = (p, x, y, z) => { const o = new THREE.Object3D(); o.position.set(x, y, z); p.add(o); return o; };
     const hits = {
       head: helper(head, 0, 0, 0.9),
@@ -898,25 +961,49 @@
       bodyF: helper(tilt, 0, 2.9, 1.7),
       bodyR: helper(tilt, 0, 2.6, -1.8),
     };
+    root.scale.setScalar(sp.size);
     scene.add(root);
-    return { root, tilt, neck, head, jaw, legs, tailSegs, tailHits, spikes, spikeM, eyeM, mouthGlow, hits, radii };
+    return { root, tilt, neck, head, jaw, legs, tailSegs, tailHits, spikes, spikeM, eyeM, mouthGlow, hits, radii, wings };
   }
-  const mon = buildMonster();
 
-  // 当たり判定の部位
-  const parts = [
-    { name: "head", obj: mon.hits.head, r: 1.3, mult: 1.5, label: "頭" },
-    { name: "neck", obj: mon.hits.neck, r: 1.1, mult: 1.1 },
-    { name: "body", obj: mon.hits.body, r: 1.9, mult: 0.8 },
-    { name: "bodyF", obj: mon.hits.bodyF, r: 1.8, mult: 0.8 },
-    { name: "bodyR", obj: mon.hits.bodyR, r: 1.7, mult: 0.8 },
-    ...mon.legs.map((l) => ({ name: "leg", obj: l.hit, r: 0.9, mult: 0.9 })),
-    ...mon.tailHits.map((h, i) => ({ name: "tail", seg: i, obj: h, r: mon.radii[i] + 0.35, mult: 1.15 })),
-  ];
-  parts.forEach((p) => { p.w = new V3(); });
+  // 当たり判定の部位（竜を差し替えるたびに作り直す）
+  let mon = null, parts = [], P_HEAD, P_NECK, P_BODY, P_BODYF, P_BODYR, P_TAIL;
   const partBy = (n) => parts.filter((p) => p.name === n);
-  const P_HEAD = partBy("head")[0], P_BODY = partBy("body")[0], P_BODYF = partBy("bodyF")[0], P_BODYR = partBy("bodyR")[0];
-  const P_TAIL = partBy("tail");
+  function applyEnv(sp) {
+    const e = sp.env;
+    scene.fog.color.setHex(e.fog);
+    scene.background.setHex(e.fog);
+    sky.material.uniforms.mid.value.setHex(e.fog);
+    sky.material.uniforms.top.value.setHex(e.top);
+    sun.color.setHex(e.sun);
+    hemi.color.setHex(e.hemi);
+    document.body.style.background = "#" + e.fog.toString(16).padStart(6, "0");
+    for (let i = 0; i < ASH_N; i++) {
+      tmpC.set(e.ash[i % 3 === 0 ? 0 : 1]);
+      ashCol[i * 3] = tmpC.r; ashCol[i * 3 + 1] = tmpC.g; ashCol[i * 3 + 2] = tmpC.b;
+    }
+    ashGeo.attributes.color.needsUpdate = true;
+  }
+  function setSpecies(id) {
+    SP = SPECIES[id] || SPECIES.valg;
+    if (mon) scene.remove(mon.root);
+    mon = buildMonster(SP);
+    const z = SP.size;
+    parts = [
+      { name: "head", obj: mon.hits.head, r: 1.3 * z, mult: 1.5 },
+      { name: "neck", obj: mon.hits.neck, r: 1.1 * z, mult: 1.1 },
+      { name: "body", obj: mon.hits.body, r: 1.9 * z, mult: 0.8 },
+      { name: "bodyF", obj: mon.hits.bodyF, r: 1.8 * z, mult: 0.8 },
+      { name: "bodyR", obj: mon.hits.bodyR, r: 1.7 * z, mult: 0.8 },
+      ...mon.legs.map((l) => ({ name: "leg", obj: l.hit, r: 0.9 * z, mult: 0.9 })),
+      ...mon.tailHits.map((h, i) => ({ name: "tail", seg: i, obj: h, r: (mon.radii[i] + 0.35) * z, mult: 1.15 })),
+    ];
+    parts.forEach((p) => { p.w = new V3(); });
+    P_HEAD = partBy("head")[0]; P_NECK = partBy("neck")[0]; P_BODY = partBy("body")[0];
+    P_BODYF = partBy("bodyF")[0]; P_BODYR = partBy("bodyR")[0]; P_TAIL = partBy("tail");
+    applyEnv(SP);
+    $("monName").textContent = SP.name;
+  }
 
   // ================= 状態 =================
   const game = { state: "title", time: 0, hitStop: 0, saveT: 0 };
@@ -924,7 +1011,14 @@
   const P = {};
   const M = {};
   let fireballs = [];
+  let hazards = [];
   let droppedTail = null;
+  function clearHazards() {
+    fireballs.forEach((f) => scene.remove(f.mesh));
+    fireballs = [];
+    hazards.forEach((h) => { scene.remove(h.ring); if (h.bolt) scene.remove(h.bolt); });
+    hazards = [];
+  }
 
   function resetWorld() {
     Object.assign(P, {
@@ -934,17 +1028,16 @@
       sprinting: false, healLeft: 0,
     });
     Object.assign(M, {
-      pos: new V3(0, 0, -12), yaw: 0.3, hp: 2800, maxHp: 2800, state: "idle", stateT: 0, t: 0,
+      pos: new V3(0, 0, -12), yaw: 0.3, hp: SP.hp, maxHp: SP.hp, state: "idle", stateT: 0, t: 0,
       aware: false, enraged: false, enrageT: 0, enrageAcc: 0, firstEnrage: false, pendingEnrage: false, limp: false,
-      flinchAcc: 0, flinchTh: 240, tailHp: 320, tailCut: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
+      flinchAcc: 0, flinchTh: SP.flinch, tailHp: SP.tailHp, tailCut: false, air: 0, comboLeft: 0, jump: null, landed: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
       wander: null, wanderWait: 0, spinBase: 0, chargeDist: 0, fired: false, roared: false, totalDmg: 0,
       stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false,
-      pose: { neckX: -0.15, neckY: 0, jaw: 0.05, tiltZ: 0, tiltX: 0, tiltY: 0, legOut: 0, tailCurl: 0 },
+      pose: { neckX: -0.15, neckY: 0, jaw: 0.05, tiltZ: 0, tiltX: 0, tiltY: 0, legOut: 0, tailCurl: 0, wing: 0 },
     });
     mon.tailSegs[3].visible = true;
     mon.tilt.rotation.set(0, 0, 0); mon.tilt.position.set(0, 0, 0);
-    fireballs.forEach((f) => scene.remove(f.mesh));
-    fireballs = [];
+    clearHazards();
     if (droppedTail) { scene.remove(droppedTail.obj); droppedTail = null; }
     setEnragedLook(false);
     game.time = 0; game.hitStop = 0;
@@ -1339,9 +1432,10 @@
     }
     if (P.state !== "faint") {
       const fw = { x: Math.sin(M.yaw), z: Math.cos(M.yaw) };
-      const circles = M.state === "dead"
+      let circles = M.state === "dead"
         ? [[M.pos.x, M.pos.z, 2.6]]
-        : [[M.pos.x, M.pos.z, 2.2], [M.pos.x + fw.x * 2.4, M.pos.z + fw.z * 2.4, 1.6]];
+        : [[M.pos.x, M.pos.z, 2.2 * SP.size], [M.pos.x + fw.x * 2.4 * SP.size, M.pos.z + fw.z * 2.4 * SP.size, 1.6 * SP.size]];
+      if (M.air > 2) circles.length = 0;
       for (const [cx, cz, cr] of circles) {
         const dx = P.pos.x - cx, dz = P.pos.z - cz, d = Math.hypot(dx, dz);
         if (d < cr + pr && d > 0.001) { const k = (cr + pr - d) / d; P.pos.x += dx * k; P.pos.z += dz * k; }
@@ -1414,7 +1508,7 @@
     h.legL.rotation.x = pose.legL;
     h.legR.rotation.x = pose.legR;
     // 溜めの光
-    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
+    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 6 ? 0x0a3050 : save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
     h.bladeMat.emissive.setHex(glow);
     // 無敵中は少し点滅
     h.root.visible = !(P.state !== "dodge" && P.iframe > 0 && P.state !== "faint" && Math.floor(P.iframe * 16) % 2 === 0 && P.iframe < 1.5 && P.state !== "down");
@@ -1442,7 +1536,7 @@
     game.hitStop = heavy ? 0.09 + P.heavyLvl * 0.025 : 0.05;
     cam.shake = heavy ? 0.35 : 0.12;
     emit(at, best.mult >= 1.4 ? 0xff9a4a : 0xfff0c0, heavy ? 26 : 14, heavy ? 9 : 6, { life: 0.35, grav: 12 });
-    emit(at, 0x9a1a10, 6, 4, { life: 0.5, grav: 14 });
+    emit(at, SP.colors.blood, 6, 4, { life: 0.5, grav: 14 });
     if (heavy) sfx.heavyHit(); else sfx.hit(best.mult >= 1.4);
   }
 
@@ -1486,7 +1580,7 @@
   // ================= 竜の動き =================
   function setMState(s) { M.state = s; M.stateT = 0; M.hitDone = false; M.fired = false; M.roared = false; }
   function setEnragedLook(on) {
-    mon.eyeM.color.setHex(on ? 0xff3a1a : 0xffc23a);
+    mon.eyeM.color.setHex(on ? SP.colors.eyeRage : SP.colors.eye);
     $("monState").textContent = on ? "怒り" : (M.limp ? "瀕死" : "");
   }
 
@@ -1505,10 +1599,10 @@
     if (M.hp <= 0) { killMonster(); return; }
     if (!M.limp && M.hp < M.maxHp * 0.2) {
       M.limp = true;
-      showMsg("ヴァルグが足を引きずっている！");
+      showMsg(`${SP.short}が足を引きずっている！`);
       $("monState").textContent = M.enraged ? "怒り" : "瀕死";
     }
-    if (!M.enraged && ((!M.firstEnrage && M.hp < M.maxHp * 0.6) || (M.firstEnrage && M.enrageAcc > 750))) M.pendingEnrage = true;
+    if (!M.enraged && ((!M.firstEnrage && M.hp < M.maxHp * SP.enrageAt) || (M.firstEnrage && M.enrageAcc > 750 * SP.size))) M.pendingEnrage = true;
     if (M.flinchAcc >= M.flinchTh && !["roar", "dead", "stagger", "flinch"].includes(M.state)) {
       M.flinchAcc = 0; M.flinchTh *= 1.25;
       setMState("flinch");
@@ -1526,7 +1620,7 @@
     scene.add(obj);
     seg.visible = false;
     droppedTail = { obj, vy: 3, landed: false };
-    emit(obj.position, 0x9a1a10, 30, 6, { life: 0.7, grav: 12 });
+    emit(obj.position, SP.colors.blood, 30, 6, { life: 0.7, grav: 12 });
     showMsg("尻尾を切断した！");
     sfx.cut();
     if (M.state !== "dead") setMState("stagger");
@@ -1535,14 +1629,23 @@
   function killMonster() {
     setMState("dead");
     M.deadAt = game.time;
-    fireballs.forEach((f) => scene.remove(f.mesh));
-    fireballs = [];
-    showMsg("焔尾竜ヴァルグを討伐した！");
+    clearHazards();
+    M.air = 0;
+    showMsg(`${SP.full}を討伐した！`);
     sfx.clear();
   }
 
   function chooseAttack(dist, ang) {
     const a = Math.abs(ang), r = Math.random();
+    if (SP.id === "zelga") {
+      const z = SP.size;
+      if (dist > 8 && r < 0.12) return "thunder"; // 向きに関係なく雷を落とす
+      if (dist < 6.5 * z && a < 0.7) return r < 0.6 ? "bite" : "tailSpin";
+      if (dist < 7.5 * z && a > 1.1) return r < 0.75 ? "tailSpin" : "thunder";
+      if (dist > 11 && a < 0.6) return r < 0.4 ? "pounce" : r < 0.75 ? "thunder" : "charge";
+      if (dist >= 6.5 * z && a < 0.5 && r < 0.45) return r < 0.25 ? "pounce" : "charge";
+      return null;
+    }
     if (dist < 6.5 && a < 0.7) return r < 0.62 ? "bite" : "tailSpin";
     if (dist < 7.5 && a > 1.1) return "tailSpin";
     if (dist > 13 && a < 0.5) return r < (M.enraged ? 0.45 : 0.6) ? "charge" : "fireball";
@@ -1554,8 +1657,8 @@
     if (M.hitDone) return;
     const pc = tmpV.set(P.pos.x, P.pos.y + 0.9, P.pos.z);
     for (const [p, r] of list) {
-      if (p.w.distanceTo(pc) < r + 0.5) {
-        if (hitPlayer(dmg, down, M.pos.x, M.pos.z)) M.hitDone = true;
+      if (p.w.distanceTo(pc) < r * SP.size + 0.5) {
+        if (hitPlayer(Math.round(dmg * SP.dmg), down, M.pos.x, M.pos.z)) M.hitDone = true;
         return;
       }
     }
@@ -1599,8 +1702,52 @@
     }
   }
 
+  const ringGeo = new THREE.RingGeometry(0.85, 1, 40);
+  ringGeo.rotateX(-Math.PI / 2);
+  const boltGeo = new THREE.CylinderGeometry(0.22, 0.4, 40, 6);
+  function spawnStrike(x, z, delay) {
+    const r = 2.4;
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: SP.colors.glow, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+    ring.position.set(x, groundH(x, z) + 0.08, z);
+    ring.scale.setScalar(r * 0.3);
+    scene.add(ring);
+    hazards.push({ x, z, r, delay, t: 0, ring, bolt: null, struck: false });
+  }
+  function updateHazards(dt) {
+    for (let i = hazards.length - 1; i >= 0; i--) {
+      const h = hazards[i];
+      h.t += dt;
+      if (!h.struck) {
+        const k = clamp(h.t / h.delay, 0, 1);
+        h.ring.scale.setScalar(h.r * (0.3 + 0.7 * k));
+        h.ring.material.opacity = 0.35 + 0.6 * Math.abs(Math.sin(h.t * (6 + k * 18)));
+        if (h.t >= h.delay) {
+          h.struck = true;
+          h.bolt = new THREE.Mesh(boltGeo, new THREE.MeshBasicMaterial({ color: 0xe8fbff, fog: false }));
+          h.bolt.position.set(h.x, groundH(h.x, h.z) + 20, h.z);
+          scene.add(h.bolt);
+          const at = tmpV2.set(h.x, groundH(h.x, h.z) + 0.5, h.z);
+          emit(at, SP.colors.glow, 30, 9, { life: 0.5, grav: 6 });
+          emit(at, 0xffffff, 12, 5, { life: 0.3, grav: 2 });
+          sfx.thunder();
+          cam.shake = Math.max(cam.shake, 0.35);
+          if (Math.hypot(P.pos.x - h.x, P.pos.z - h.z) < h.r + 0.3) hitPlayer(Math.round(34 * SP.dmg), true, h.x, h.z);
+        }
+      } else {
+        const k = (h.t - h.delay) / 0.25;
+        h.bolt.scale.x = h.bolt.scale.z = Math.max(0.05, 1 - k);
+        h.ring.material.opacity = Math.max(0, 0.8 - k);
+        if (k >= 1) {
+          scene.remove(h.ring); scene.remove(h.bolt);
+          h.ring.material.dispose(); h.bolt.material.dispose();
+          hazards.splice(i, 1);
+        }
+      }
+    }
+  }
+
   function updateMonster(dt) {
-    const ts = M.enraged ? 1.18 : 1;
+    const ts = (M.enraged ? 1.18 : 1) * SP.tempo;
     M.t += dt;
     M.stateT += dt * ts;
     if (M.enraged) {
@@ -1611,7 +1758,7 @@
     const dist = Math.hypot(dx, dz);
     const toP = Math.atan2(dx, dz);
     const ang = angDiff(M.yaw, toP);
-    const spMul = (M.enraged ? 1.25 : 1) * (M.limp ? 0.7 : 1);
+    const spMul = (M.enraged ? 1.25 : 1) * (M.limp ? 0.7 : 1) * SP.speed;
     const targetable = P.state !== "faint" && game.state === "play";
     let speed = 0;
     const T = M.stateT;
@@ -1631,7 +1778,7 @@
           if (Math.abs(angDiff(M.yaw, wa)) < 0.8) speed = 2.2;
         }
         if (targetable && dist < 20) {
-          if (!M.aware) { M.aware = true; $("monPanel").hidden = false; setMState("roar"); showMsg("焔尾竜ヴァルグに気づかれた！", true); }
+          if (!M.aware) { M.aware = true; $("monPanel").hidden = false; setMState("roar"); showMsg(`${SP.full}に気づかれた！`, true); }
           else setMState("chase");
         }
         break;
@@ -1640,23 +1787,32 @@
         if (!targetable) { setMState("idle"); break; }
         if (M.pendingEnrage) { M.pendingEnrage = false; setMState("roar"); M.enrageRoar = true; break; }
         M.atkCd -= dt;
-        M.yaw = turnToward(M.yaw, toP, 1.7 * spMul * dt);
-        if (dist > 4.8) speed = Math.abs(ang) < 1.0 ? 5.2 * spMul : 1.8;
+        M.yaw = turnToward(M.yaw, toP, 1.7 * spMul * SP.turn / SP.speed * dt);
+        if (dist > 4.8 * SP.size) speed = Math.abs(ang) < 1.0 ? 5.2 * spMul : 1.8;
         if (M.atkCd <= 0) {
           const atk = chooseAttack(dist, ang);
           if (atk) {
             setMState(atk);
             if (atk === "tailSpin") M.spinBase = M.yaw;
             if (atk === "charge") M.chargeDist = 0;
+            if (atk === "bite") M.comboLeft = SP.id === "zelga" ? (M.enraged ? 2 : 1) : 0;
+            if (atk === "pounce") { M.jump = null; M.landed = false; }
           } else M.atkCd = 0.25;
         }
         break;
       }
       case "bite": {
-        if (T < 0.55) M.yaw = turnToward(M.yaw, toP, 2.4 * dt);
+        if (T < 0.55) M.yaw = turnToward(M.yaw, toP, 2.4 * SP.turn * dt);
         else if (T < 0.8) {
-          speed = 11;
-          monsterHitsPlayer([[P_HEAD, 1.7], [partBy("neck")[0], 1.3]], 26, false);
+          speed = 11 * SP.speed;
+          monsterHitsPlayer([[P_HEAD, 1.7], [P_NECK, 1.3]], 26, false);
+        }
+        // 蒼雷竜は噛みつきを連続で繰り出す
+        if (T >= 0.95 && M.comboLeft > 0 && dist < 11) {
+          M.comboLeft--;
+          setMState("bite");
+          M.stateT = 0.2;
+          break;
         }
         if (T >= 1.3) endAttack();
         break;
@@ -1679,7 +1835,7 @@
           M.yaw = turnToward(M.yaw, toP, 3 * dt);
           if (Math.random() < 0.3) { mon.legs[0].foot.getWorldPosition(tmpV2); emit(tmpV2, 0x8a7a6a, 2, 2, { life: 0.6, grav: 2 }); }
         } else {
-          speed = (M.enraged ? 22 : 19) * (M.limp ? 0.75 : 1);
+          speed = (M.enraged ? 22 : 19) * (M.limp ? 0.75 : 1) * SP.speed;
           M.chargeDist += speed * dt;
           if (targetable) M.yaw = turnToward(M.yaw, toP, 0.35 * dt);
           monsterHitsPlayer([[P_BODYF, 2.4], [P_BODY, 2.2], [P_HEAD, 1.6]], 38, true);
@@ -1707,6 +1863,56 @@
         if (T >= 1.5) endAttack();
         break;
       }
+      case "thunder": {
+        if (T < 0.9) {
+          M.yaw = turnToward(M.yaw, toP, 2 * dt);
+          if (Math.random() < 0.7) { mon.hits.head.getWorldPosition(tmpV2); tmpV2.y += 1.2; emit(tmpV2, SP.colors.glow, 2, 3, { life: 0.3, grav: 0, spread: 1.5 }); }
+          if (!M.fired && T > 0.1) { M.fired = true; sfx.charge(3); }
+        } else if (!M.roared) {
+          M.roared = true;
+          const n = M.enraged ? 6 : 4;
+          for (let i = 0; i < n; i++) {
+            let x = P.pos.x, z = P.pos.z;
+            if (i > 0) {
+              const a = Math.random() * TAU, d = 3 + Math.random() * 6;
+              x += Math.cos(a) * d; z += Math.sin(a) * d;
+            }
+            spawnStrike(x, z, 1.0 + i * 0.14);
+          }
+        }
+        if (T >= 2.0) endAttack();
+        break;
+      }
+      case "pounce": {
+        if (T < 0.6) {
+          M.yaw = turnToward(M.yaw, toP, 3 * dt);
+        } else if (!M.jump) {
+          const d = Math.min(24, Math.max(0, dist - 2.5 * SP.size));
+          M.jump = { fx: M.pos.x, fz: M.pos.z, tx: M.pos.x + Math.sin(toP) * d, tz: M.pos.z + Math.cos(toP) * d };
+          M.yaw = toP;
+          sfx.swing();
+        } else if (T < 1.4) {
+          const k = smooth((T - 0.6) / 0.8);
+          M.pos.x = lerp(M.jump.fx, M.jump.tx, k);
+          M.pos.z = lerp(M.jump.fz, M.jump.tz, k);
+          M.air = Math.sin(k * Math.PI) * 7;
+          if (k > 0.55) monsterHitsPlayer([[P_BODY, 2.4], [P_BODYF, 2.2]], 40, true);
+        } else if (!M.landed) {
+          M.landed = true;
+          M.air = 0;
+          sfx.boom(); sfx.step();
+          cam.shake = 0.8;
+          for (let i = 0; i < 24; i++) {
+            const a = (i / 24) * TAU;
+            emit(tmpV2.set(M.pos.x + Math.cos(a) * 3, M.pos.y + 0.3, M.pos.z + Math.sin(a) * 3), 0x9aa4b0, 2, 5, { life: 0.8, grav: 3 });
+          }
+          if (Math.hypot(P.pos.x - M.pos.x, P.pos.z - M.pos.z) < 6 * SP.size && !M.hitDone) {
+            if (hitPlayer(Math.round(44 * SP.dmg), true, M.pos.x, M.pos.z)) M.hitDone = true;
+          }
+        }
+        if (T >= 2.2) endAttack();
+        break;
+      }
       case "roar": {
         if (T >= 0.35 && !M.roared) {
           M.roared = true;
@@ -1715,9 +1921,9 @@
           if (M.enrageRoar) {
             M.enrageRoar = false; M.enraged = true; M.firstEnrage = true; M.enrageT = 40; M.enrageAcc = 0;
             setEnragedLook(true);
-            showMsg("ヴァルグが怒り状態になった！", true);
+            showMsg(`${SP.short}が怒り状態になった！`, true);
           }
-          if (dist < 16 && P.iframe <= 0 && ["move", "attack", "charge", "drink"].includes(P.state)) setPState("stun");
+          if (dist < 16 * SP.size && P.iframe <= 0 && ["move", "attack", "charge", "drink"].includes(P.state)) setPState("stun");
         }
         if (T >= 2.1) { setMState("chase"); M.atkCd = 0.4; }
         break;
@@ -1735,13 +1941,14 @@
     // 岩と外周
     for (const r of rocks) {
       const ddx = M.pos.x - r.x, ddz = M.pos.z - r.z, d = Math.hypot(ddx, ddz);
-      if (d < r.r + 2.3 && d > 0.001) {
-        const k = (r.r + 2.3 - d) / d; M.pos.x += ddx * k; M.pos.z += ddz * k;
+      const mr0 = 2.3 * SP.size;
+      if (M.air < 1 && d < r.r + mr0 && d > 0.001) {
+        const k = (r.r + mr0 - d) / d; M.pos.x += ddx * k; M.pos.z += ddz * k;
         if (M.state === "charge" && M.stateT > 0.8) {
           setMState("stagger");
           cam.shake = 0.6; sfx.boom();
           emit(tmpV2.set(r.x, groundH(r.x, r.z) + r.r, r.z), 0x9a8a7a, 30, 6, { life: 0.8, grav: 8 });
-          showMsg("ヴァルグが岩に激突した！");
+          showMsg(`${SP.short}が岩に激突した！`);
         }
       }
     }
@@ -1763,11 +1970,13 @@
       if (M.flameT <= 0) {
         M.flameT = 0.04;
         const s = mon.spikes[(Math.random() * mon.spikes.length) | 0];
-        if (!(M.tailCut && (s.userData.seg ?? -1) >= 3)) { s.getWorldPosition(tmpV2); emit(tmpV2, 0xff6a1a, 1, 1, { life: 0.7, grav: -3 }); }
+        if (!(M.tailCut && (s.userData.seg ?? -1) >= 3)) { s.getWorldPosition(tmpV2); emit(tmpV2, SP.colors.glow, 1, 1, { life: 0.7, grav: -3 }); }
       }
     }
 
+    if (M.state !== "pounce") M.air = Math.max(0, M.air - dt * 20);
     mon.root.position.copy(M.pos);
+    mon.root.position.y += M.air;
     mon.root.rotation.y = M.yaw;
     animateMonster(dt);
     mon.root.updateMatrixWorld(true);
@@ -1805,9 +2014,18 @@
         else if (T < 0.95) { t.neckX = 0.3; t.jaw = 0.9; }
         else t.neckX = -0.05;
         break;
+      case "thunder":
+        if (T < 0.9) { t.neckX = -0.9; t.jaw = 0.6; t.wing = 1; t.tiltX = -0.08; mon.mouthGlow.visible = true; mon.mouthGlow.scale.setScalar(0.5 + T); }
+        else { t.neckX = -0.3; t.jaw = 1.0; t.wing = 0.6; }
+        break;
+      case "pounce":
+        if (T < 0.6) { t.neckX = 0.4; t.tiltY = -0.4; t.tiltX = 0.1; t.wing = 0.8; }
+        else if (T < 1.4) { t.neckX = -0.2; t.tiltX = -0.2; t.legOut = 0.25; t.wing = 0.5 + Math.sin(M.t * 20) * 0.5; t.jaw = 0.6; }
+        else { t.neckX = 0.35; t.tiltY = -0.25; t.wing = 0.3; }
+        break;
       case "roar":
         if (T < 0.35) t.neckX = 0.25;
-        else if (T < 1.85) { t.neckX = -0.85; t.jaw = 1.05; t.neckY = Math.sin(M.t * 40) * 0.07; }
+        else if (T < 1.85) { t.neckX = -0.85; t.jaw = 1.05; t.neckY = Math.sin(M.t * 40) * 0.07; t.wing = 1; }
         break;
       case "flinch":
         t.neckX = 0.55; t.neckY = Math.sin(T * 18) * 0.3; t.tiltZ = Math.sin(T * 12) * 0.07; t.jaw = 0.5; break;
@@ -1830,6 +2048,11 @@
       if (M.limp && i === 2) amp *= 0.35;
       l.g.rotation.x = M.state === "dead" ? 0 : Math.sin(M.walkPh + phase) * amp;
       l.g.rotation.z = l.sx * ps.legOut;
+    });
+    mon.wings.forEach(({ g, side }) => {
+      // 0 = たたむ, 1 = 大きく広げる
+      g.rotation.z = side * lerp(-1.15, 0.35, ps.wing);
+      g.rotation.y = side * lerp(0.5, 0, ps.wing);
     });
     mon.tailSegs.forEach((s, i) => {
       s.rotation.y = tailSway * (1 + i * 0.25) + ps.tailCurl * (0.4 + i * 0.1);
@@ -1896,21 +2119,30 @@
   const MATS = {
     scale: "焔尾竜の鱗", shell: "焔尾竜の甲殻", fang: "焔尾竜の牙", claw: "焔尾竜の爪",
     crystal: "灰霧の結晶", sac: "焔尾竜の火炎袋", tail: "焔尾竜の尻尾", orb: "焔竜玉",
+    zscale: "蒼雷竜の鱗", zshell: "蒼雷竜の甲殻", zhorn: "蒼雷竜の角", zwing: "蒼雷竜の翼膜", ztail: "蒼雷竜の尻尾", zorb: "雷竜玉",
   };
-  const RARE = new Set(["tail", "orb"]);
-  const DROP_TABLE = ["scale", "scale", "scale", "shell", "shell", "fang", "claw", "crystal", "sac"];
+  const RARE = new Set(["tail", "orb", "ztail", "zorb"]);
   const WEAPONS = [
     { name: "鉄刀", atk: 100 },
     { name: "鉄刀【改】", atk: 115, cost: { scale: 3, fang: 1 }, z: 3000 },
     { name: "焔刀ヴァルグ", atk: 132, cost: { scale: 4, shell: 3, claw: 2 }, z: 6000 },
     { name: "焔刀ヴァルグ改", atk: 150, cost: { shell: 4, sac: 2, tail: 1 }, z: 10000 },
     { name: "焔尾大刀【灼】", atk: 172, cost: { orb: 1, sac: 3, crystal: 4 }, z: 15000 },
+    { name: "蒼雷刀ゼルガ", atk: 196, cost: { zscale: 4, zshell: 3, zhorn: 2 }, z: 20000 },
+    { name: "雷刃【轟】", atk: 225, cost: { zorb: 1, zwing: 3, ztail: 1, orb: 1 }, z: 32000 },
   ];
-  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, zenny: 0, weaponLv: 1, items: {}, suspend: null });
+  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg" });
+  const normalizeSave = (s) => {
+    const o = Object.assign(defaultSave(), s);
+    o.best = Object.assign({}, o.best || {});
+    if (o.bestTime != null && o.best.valg == null) o.best.valg = o.bestTime; // 旧データの最速タイム
+    if (!SPECIES[o.quest]) o.quest = "valg";
+    return o;
+  };
   let save = defaultSave();
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && s.v === 1) save = Object.assign(defaultSave(), s);
+    if (s && s.v === 1) save = normalizeSave(s);
   } catch { /* 保存データなし */ }
   const hrOf = () => 1 + Math.floor(save.hrp / 250);
   const weapon = () => WEAPONS[clamp(save.weaponLv, 1, WEAPONS.length) - 1];
@@ -1965,9 +2197,9 @@
       const remote = snap.exists ? snap.data() : null;
       if (remote && remote.v === 1 && (remote.updatedAt || 0) > (save.updatedAt || 0)) {
         if (game.state === "title") {
-          save = Object.assign(defaultSave(), JSON.parse(JSON.stringify(remote)));
+          save = normalizeSave(JSON.parse(JSON.stringify(remote)));
           writeLocal();
-          renderTitle();
+          selectQuest(save.quest);
         }
       } else if (save.updatedAt > 0) {
         pushCloud();
@@ -1979,6 +2211,7 @@
   // 中断データ
   function snapshotQuest() {
     return {
+      sp: SP.id,
       time: game.time,
       p: { x: P.pos.x, z: P.pos.z, yaw: P.yaw, hp: Math.max(1, P.hp), st: P.st, potions: P.potions, carts: P.carts },
       m: {
@@ -1994,6 +2227,7 @@
     persist(toast);
   }
   function applySuspend(s) {
+    setSpecies(s.sp || "valg");
     resetWorld();
     game.time = s.time;
     Object.assign(P, { hp: s.p.hp, hpLag: s.p.hp, st: s.p.st, potions: s.p.potions, carts: s.p.carts, yaw: s.p.yaw });
@@ -2011,16 +2245,29 @@
   }
 
   function renderTitle() {
+    const q = SPECIES[save.quest] || SPECIES.valg;
+    document.querySelectorAll(".quest-tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.q === q.id)));
+    $("qRank").textContent = `${q.rank} 狩猟クエスト`;
+    $("qTitle").textContent = q.quest;
+    $("qTarget").textContent = `${q.full} 1頭の狩猟`;
+    $("qPlace").textContent = q.place;
+    $("qReward").textContent = q.reward.toLocaleString("ja-JP") + "z";
+    $("qNote").textContent = q.note;
+    $("qAdvice").textContent = q.advice;
     $("pfHr").textContent = hrOf();
     $("pfClears").textContent = save.clears;
-    $("pfBest").textContent = save.bestTime == null ? "--:--" : fmtTime(save.bestTime);
+    $("pfBestLabel").textContent = `最速（${q.short}）`;
+    $("pfBest").textContent = save.best[q.id] == null ? "--:--" : fmtTime(save.best[q.id]);
     $("pfZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
     $("pfWeapon").textContent = weapon().name;
     $("pfAtk").textContent = weapon().atk;
     const s = save.suspend;
     $("continueBtn").hidden = !s;
-    if (s) $("continueInfo").textContent = `経過 ${fmtTime(s.time)} ・ 竜の体力 ${Math.ceil((s.m.hp / 2800) * 100)}% ・ 力尽き ${s.p.carts}/3`;
-    $("startBtn").textContent = s ? "新しく出発する（中断データは消えます）" : "出発する";
+    if (s) {
+      const ss = SPECIES[s.sp] || SPECIES.valg;
+      $("continueInfo").textContent = `${ss.short} ・ 経過 ${fmtTime(s.time)} ・ 竜の体力 ${Math.ceil((s.m.hp / ss.hp) * 100)}% ・ 力尽き ${s.p.carts}/3`;
+    }
+    $("startBtn").textContent = s ? `${q.short}討伐に出発（中断データは消えます）` : `${q.short}討伐に出発する`;
     renderSaveNote();
   }
 
@@ -2057,7 +2304,7 @@
     const owned = Object.keys(MATS).filter((k) => save.items[k] > 0);
     if (!owned.length) {
       const li = document.createElement("li");
-      li.textContent = "まだ素材がない。ヴァルグを狩ろう";
+      li.textContent = "まだ素材がない。竜を狩ろう";
       box.appendChild(li);
     }
     for (const k of owned) {
@@ -2105,14 +2352,21 @@
     updateUI(0);
     grabFocus();
   }
+  function selectQuest(id) {
+    if (!SPECIES[id]) return;
+    save.quest = id;
+    if (SP.id !== id) { setSpecies(id); resetWorld(); }
+    renderTitle();
+  }
   function startQuest() {
     initAudio();
+    setSpecies(save.quest);
     resetWorld();
     save.suspend = null;
     persist();
     camera.position.set(CAMP.x, CAMP.y + 5, CAMP.z + 10);
     enterPlay();
-    showMsg("クエスト開始！ 焔尾竜ヴァルグを狩猟せよ");
+    showMsg(`クエスト開始！ ${SP.full}を狩猟せよ`);
   }
   // 描画が戻らないときは、中断データを保存して読み込み直し、そのまま続きから再開する
   function reloadAndContinue() {
@@ -2124,6 +2378,7 @@
     if (!save.suspend) return;
     initAudio();
     applySuspend(save.suspend);
+    save.quest = SP.id;
     enterPlay();
     showMsg("中断したところから再開");
   }
@@ -2146,6 +2401,7 @@
   }
   function toTitle() {
     game.state = "title";
+    if (SP.id !== save.quest) setSpecies(save.quest);
     resetWorld();
     ["pauseScreen", "resultScreen", "hud", "hint", "monPanel", "smithScreen", "focusGuard"].forEach((id) => { $(id).hidden = true; });
     $("titleScreen").hidden = false;
@@ -2172,11 +2428,11 @@
     if (success) {
       const got = {};
       for (let i = 0; i < 5; i++) {
-        const k = DROP_TABLE[(Math.random() * DROP_TABLE.length) | 0];
+        const k = SP.drops[(Math.random() * SP.drops.length) | 0];
         got[k] = (got[k] || 0) + 1;
       }
-      if (M.tailCut) got.tail = (got.tail || 0) + 1;
-      if (Math.random() < (M.tailCut ? 0.12 : 0.08)) got.orb = 1;
+      if (M.tailCut) got[SP.tailItem] = (got[SP.tailItem] || 0) + 1;
+      if (Math.random() < (M.tailCut ? 0.12 : 0.08)) got[SP.orb] = 1;
       for (const [k, n] of Object.entries(got)) {
         save.items[k] = (save.items[k] || 0) + n;
         const li = document.createElement("li");
@@ -2187,14 +2443,15 @@
         list.appendChild(li);
       }
       const li = document.createElement("li");
-      li.innerHTML = "<span>報酬金</span><b>7,200z</b>";
+      li.innerHTML = "<span>報酬金</span><b></b>";
+      li.lastChild.textContent = SP.reward.toLocaleString("ja-JP") + "z";
       list.appendChild(li);
-      const hrGain = 100 + (M.tailCut ? 50 : 0) + (P.carts === 0 ? 50 : 0);
+      const hrGain = SP.hrp + (M.tailCut ? 50 : 0) + (P.carts === 0 ? 50 : 0);
       const beforeHr = hrOf();
       save.hrp += hrGain;
-      save.zenny += 7200;
+      save.zenny += SP.reward;
       save.clears++;
-      if (save.bestTime == null || time < save.bestTime) save.bestTime = time;
+      if (save.best[SP.id] == null || time < save.best[SP.id]) save.best[SP.id] = time;
       $("resHr").textContent = `+${hrGain}` + (hrOf() > beforeHr ? `（HR ${hrOf()} に上がった！）` : "");
       $("resNote").textContent = "報酬はアイテムボックスに入れて保存しました";
     } else {
@@ -2217,8 +2474,11 @@
   $("smithBtn").addEventListener("click", () => { renderSmith(); $("titleScreen").hidden = true; $("smithScreen").hidden = false; });
   $("smithBack").addEventListener("click", () => { $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle(); });
   $("upgradeBtn").addEventListener("click", upgrade);
+  document.querySelectorAll(".quest-tabs button").forEach((b) => b.addEventListener("click", () => { selectQuest(b.dataset.q); persist(); }));
   $("focusGuard").addEventListener("click", () => { resetInput(); grabFocus(); $("focusGuard").hidden = true; });
   window.addEventListener("pagehide", () => { if (game.state === "play" || game.state === "pause") { save.suspend = snapshotQuest(); save.updatedAt = Date.now(); writeLocal(); } });
+  setSpecies(save.quest);
+  resetWorld();
   renderTitle();
   initCloud();
   try {
@@ -2262,6 +2522,7 @@
       updatePlayer(gdt);
       updateMonster(gdt);
       updateFireballs(gdt);
+      updateHazards(gdt);
       if (game.state === "play") {
         updateUI(dt);
         game.saveT += dt;
