@@ -265,6 +265,16 @@
   .armor-head span { font: 600 13px/1 var(--num); color: #7a4a22; white-space: nowrap; }
   .armor-skills { margin: 0; font-size: 12px; color: #4a3a2c; line-height: 1.6; }
   .armor-cost { margin: 0; font-size: 12px; color: #4a3a2c; line-height: 1.6; }
+  .armor-skills b { font-weight: 700; color: #7a4a22; }
+  .armor-skills.rand { color: #2a5a2a; font-weight: 700; }
+  .armor-skills.new { color: #2a5a2a; font-weight: 700; }
+  .armor-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .armor-list button.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(23, 19, 15, 0.4); }
+  .roll-box {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px; border-radius: 3px;
+    background: rgba(42, 90, 42, 0.1); border: 1px dashed rgba(42, 90, 42, 0.6);
+  }
   .armor-cost .short { color: var(--blood); font-weight: 700; }
   .armor-list button {
     align-self: flex-start;
@@ -375,6 +385,7 @@
       <div><small>所持金</small><b id="pfZenny">0z</b></div>
     </div>
     <p class="weapon-line">武器：<b id="pfWeapon">鉄刀</b>（攻撃力 <span id="pfAtk">100</span>）　防具：<b id="pfArmor">ハンター装備</b>（防御 <span id="pfDef">0</span>%）</p>
+    <p class="weapon-line">スキル：<span id="pfSkills">なし</span></p>
     <dl class="q-meta">
       <div><dt>目的</dt><dd id="qTarget">焔尾竜ヴァルグ 1頭の狩猟</dd></div>
       <div><dt>狩猟地</dt><dd id="qPlace">灰霧の谷</dd></div>
@@ -1090,7 +1101,7 @@
 
   function resetWorld() {
     Object.assign(P, {
-      pos: CAMP.clone(), yaw: Math.PI, hp: 150 + armor().hp, maxHp: 150 + armor().hp, hpLag: 150 + armor().hp, st: 100, maxSt: 100, exhausted: false,
+      pos: CAMP.clone(), yaw: Math.PI, hp: 150 + gear().hp, maxHp: 150 + gear().hp, hpLag: 150 + gear().hp, st: 100, maxSt: 100, exhausted: false,
       potions: 5, carts: 0, state: "move", stateT: 0, action: null, hitDone: false, queued: false, swung: false,
       charge: 0, chargeLvl: 0, heavyLvl: 0, iframe: 0, kx: 0, kz: 0, dodgeX: 0, dodgeZ: -1, animPh: 0, moveSpeed: 0,
       sprinting: false, healLeft: 0,
@@ -1351,11 +1362,11 @@
   }
   function tryDodge(wx, wz, wm) {
     if (P.st < 12) return false;
-    P.st -= 22 * (1 - (armor().stamina || 0));
+    P.st -= 22 * (1 - gear().stamina);
     if (wm > 0.1) { P.dodgeX = wx; P.dodgeZ = wz; P.yaw = Math.atan2(wx, wz); }
     else { P.dodgeX = Math.sin(P.yaw); P.dodgeZ = Math.cos(P.yaw); }
     setPState("dodge");
-    P.iframe = Math.max(P.iframe, 0.36 + (armor().dodge || 0));
+    P.iframe = Math.max(P.iframe, 0.36 + gear().dodge);
     P.queued = false;
     return true;
   }
@@ -1363,12 +1374,13 @@
     if (P.potions <= 0) { showMsg("回復薬が残っていない", true); return; }
     if (P.hp >= P.maxHp) { showMsg("体力は満タンだ"); return; }
     P.potions--;
-    P.healLeft = 60;
+    P.healLeft = 60 * (1 + gear().potion);
     setPState("drink");
   }
   function movePlayer(dx, dz) { P.pos.x += dx; P.pos.z += dz; }
 
   function updatePlayer(dt) {
+    P.gear = gear();
     P.stateT += dt;
     P.iframe = Math.max(0, P.iframe - dt);
     const mv = input.moveVec();
@@ -1416,7 +1428,7 @@
         break;
       }
       case "charge": {
-        P.charge += dt;
+        P.charge += dt * (1 + gear().charge);
         if (wm > 0.1) P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 3 * dt);
         const lvl = P.charge >= 1.35 ? 3 : P.charge >= 0.85 ? 2 : P.charge >= 0.4 ? 1 : 0;
         if (lvl > P.chargeLvl) {
@@ -1468,6 +1480,12 @@
         break;
     }
 
+    // 自動回復
+    if (P.gear.regen > 0 && P.state !== "faint" && P.hp > 0 && P.hp < P.maxHp) {
+      P.hp = Math.min(P.maxHp, P.hp + P.gear.regen * dt);
+      P.regenFx = (P.regenFx || 0) + dt;
+      if (P.regenFx > 0.35) { P.regenFx = 0; emit(tmpV.set(P.pos.x, P.pos.y + 0.6, P.pos.z), 0x8fe07a, 1, 1.2, { spread: 0.8, life: 0.7, grav: -1.5 }); }
+    }
     // ふっとび
     if (Math.abs(P.kx) + Math.abs(P.kz) > 0.01) {
       movePlayer(P.kx * dt, P.kz * dt);
@@ -1477,10 +1495,10 @@
 
     // スタミナ
     if (P.sprinting) {
-      P.st -= 20 * (1 - (armor().stamina || 0)) * dt;
+      P.st -= 20 * (1 - gear().stamina) * dt;
       if (P.st <= 0) { P.st = 0; P.exhausted = true; }
     } else if (P.state !== "dodge") {
-      P.st = Math.min(P.maxSt, P.st + 26 * dt);
+      P.st = Math.min(P.maxSt, P.st + 26 * (1 + P.gear.stRegen) * dt);
     }
     if (P.exhausted && P.st > 30) P.exhausted = false;
 
@@ -1598,7 +1616,7 @@
     if (!best) return;
     P.hitDone = true;
     const base = P.action === "heavy" ? HEAVY_DMG[P.heavyLvl] : a.dmg;
-    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (1 + (armor().atk || 0)) * (0.9 + Math.random() * 0.2));
+    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (1 + gear().atk) * (0.9 + Math.random() * 0.2));
     const at = tmpV2.copy(c).lerp(best.w, 0.6);
     damageMonster(dmg, best, at);
     const heavy = P.action === "heavy" || P.action === "s3";
@@ -1612,8 +1630,8 @@
   // kind: "phys"（体当たり等） / "fire" / "thunder"。防具の防御と耐性で減らす
   function hitPlayer(dmg, down, fromX, fromZ, kind = "phys") {
     if (P.iframe > 0 || P.state === "faint" || game.state !== "play") return false;
-    const A = armor();
-    const res = kind === "fire" ? (A.fireRes || 0) : kind === "thunder" ? (A.thunderRes || 0) : 0;
+    const A = gear();
+    const res = kind === "fire" ? A.fireRes : kind === "thunder" ? A.thunderRes : 0;
     dmg = Math.max(1, Math.round(dmg * (1 - A.def) * (1 - res)));
     if (!TEST_MODE) P.hp -= dmg; // テスト版は無敵（のけぞりだけ起きる）
     const dx = P.pos.x - fromX, dz = P.pos.z - fromZ, d = Math.hypot(dx, dz) || 1;
@@ -2054,7 +2072,7 @@
             setEnragedLook(true);
             showMsg(`${SP.short}が怒り状態になった！`, true);
           }
-          if (dist < 16 * SP.size && P.iframe <= 0 && ["move", "attack", "charge", "drink"].includes(P.state)) setPState("stun");
+          if (dist < 16 * SP.size && P.iframe <= 0 && ["move", "attack", "charge", "drink"].includes(P.state) && !gear().roarImmune) setPState("stun");
         }
         if (T >= 2.1) { setMState("chase"); M.atkCd = 0.4; }
         break;
@@ -2276,24 +2294,69 @@
     { name: "極星刃【天冥】", atk: 360, cost: { xorb: 1, xwing: 3, xtail: 1, acore: 1 }, z: 120000 },
   ];
   const ARMORS = [
-    { id: "hunter", name: "ハンター装備", def: 0, hp: 0, skills: ["なし"], color: { plate: 0xb9ae98, cloth: 0xd2552a } },
-    { id: "valg", name: "焔尾装備", def: 0.15, hp: 0, fireRes: 0.3, skills: ["火耐性（火のダメージ-30%）"],
+    { id: "hunter", name: "ハンター装備", def: 0, hp: 0, skills: ["なし"], slots: [1, 1], bias: 0, reroll: 1000, color: { plate: 0xb9ae98, cloth: 0xd2552a } },
+    { id: "valg", name: "焔尾装備", def: 0.15, hp: 0, fireRes: 0.3, skills: ["火耐性（火のダメージ-30%）"], slots: [1, 2], bias: 0.15, reroll: 3000,
       cost: { scale: 4, shell: 2, fang: 1 }, z: 4000, color: { plate: 0x9a4a2a, cloth: 0xffa040 } },
-    { id: "zelga", name: "蒼雷装備", def: 0.25, hp: 0, thunderRes: 0.3, dodge: 0.15, skills: ["雷耐性（雷のダメージ-30%）", "回避性能（回避の無敵が長い）"],
+    { id: "zelga", name: "蒼雷装備", def: 0.25, hp: 0, thunderRes: 0.3, dodge: 0.15, skills: ["雷耐性（雷のダメージ-30%）", "回避性能（回避の無敵が長い）"], slots: [1, 2], bias: 0.3, reroll: 8000,
       cost: { zscale: 4, zshell: 2, zhorn: 1 }, z: 15000, color: { plate: 0x3a5a8a, cloth: 0x6fd0ff } },
-    { id: "agniva", name: "獄炎装備", def: 0.35, hp: 50, fireRes: 0.4, skills: ["体力+50", "火耐性・大（火のダメージ-40%）"],
+    { id: "agniva", name: "獄炎装備", def: 0.35, hp: 50, fireRes: 0.4, skills: ["体力+50", "火耐性・大（火のダメージ-40%）"], slots: [2, 2], bias: 0.45, reroll: 20000,
       cost: { ascale: 4, ashell: 3, ahorn: 1, awing: 1 }, z: 40000, color: { plate: 0x3a2622, cloth: 0xff3a10 } },
-    { id: "xenogia", name: "天冥装備", def: 0.45, hp: 30, atk: 0.1, stamina: 0.4, fireRes: 0.2, thunderRes: 0.2,
+    { id: "xenogia", name: "天冥装備", def: 0.45, hp: 30, atk: 0.1, stamina: 0.4, fireRes: 0.2, thunderRes: 0.2, slots: [2, 3], bias: 0.65, reroll: 40000,
       skills: ["攻撃+10%", "スタミナ消費-40%", "体力+30", "火・雷耐性（-20%）"],
       cost: { xscale: 5, xshell: 3, xwing: 2, xorb: 1 }, z: 100000, color: { plate: 0xd8c07a, cloth: 0xb07cff } },
   ];
   const armor = () => ARMORS.find((a) => a.id === save.armor) || ARMORS[0];
+
+  // 防具に付くランダムスキル（weight が大きいほど出やすい）
+  const SKILLS = {
+    regen: { name: "自動回復", max: 2, weight: 2.2, text: (lv) => `体力が毎秒${[0, 1.5, 3][lv]}回復`, apply: (g, lv) => { g.regen += [0, 1.5, 3][lv]; } },
+    atk: { name: "攻撃", max: 3, weight: 1.6, text: (lv) => `攻撃+${lv * 5}%`, apply: (g, lv) => { g.atk += lv * 0.05; } },
+    hp: { name: "体力", max: 2, weight: 1.5, text: (lv) => `体力+${lv * 20}`, apply: (g, lv) => { g.hp += lv * 20; } },
+    def: { name: "防御", max: 2, weight: 1.3, text: (lv) => `防御+${lv * 5}%`, apply: (g, lv) => { g.def += lv * 0.05; } },
+    evade: { name: "回避性能", max: 2, weight: 1.2, text: (lv) => `回避の無敵が長い（+${lv * 0.08}秒）`, apply: (g, lv) => { g.dodge += lv * 0.08; } },
+    stRegen: { name: "スタミナ急速回復", max: 2, weight: 1.2, text: (lv) => `スタミナの回復+${lv * 30}%`, apply: (g, lv) => { g.stRegen += lv * 0.3; } },
+    fire: { name: "火耐性", max: 2, weight: 1, text: (lv) => `火のダメージ-${lv * 10}%`, apply: (g, lv) => { g.fireRes += lv * 0.1; } },
+    thunder: { name: "雷耐性", max: 2, weight: 1, text: (lv) => `雷のダメージ-${lv * 10}%`, apply: (g, lv) => { g.thunderRes += lv * 0.1; } },
+    potion: { name: "回復量UP", max: 1, weight: 1, text: () => "回復薬の回復量+30%", apply: (g) => { g.potion += 0.3; } },
+    charge: { name: "溜め短縮", max: 2, weight: 1, text: (lv) => `溜めが${lv * 20}%速い`, apply: (g, lv) => { g.charge += lv * 0.2; } },
+    roar: { name: "咆哮無効", max: 1, weight: 0.6, text: () => "咆哮で耳をふさがない", apply: (g) => { g.roarImmune = true; } },
+  };
+  const skillLabel = (sk) => `${SKILLS[sk.id].name}${SKILLS[sk.id].max > 1 ? " Lv" + sk.lv : ""}（${SKILLS[sk.id].text(sk.lv)}）`;
+  function rollSkills(a) {
+    const n = a.slots[0] + Math.floor(Math.random() * (a.slots[1] - a.slots[0] + 1));
+    const pool = Object.keys(SKILLS);
+    const out = [];
+    while (out.length < n && pool.length) {
+      const total = pool.reduce((t, id) => t + SKILLS[id].weight, 0);
+      let r = Math.random() * total, i = 0;
+      while ((r -= SKILLS[pool[i]].weight) > 0) i++;
+      const id = pool.splice(i, 1)[0];
+      let lv = 1;
+      if (Math.random() < a.bias) lv++;
+      if (Math.random() < a.bias * 0.45) lv++;
+      out.push({ id, lv: Math.min(lv, SKILLS[id].max) });
+    }
+    return out;
+  }
+  const armorSkills = (id) => (save.armorSkills && save.armorSkills[id]) || [];
+  // 装備中の防具（固定の性能＋ランダムスキル）をまとめた値
+  function gear() {
+    const a = armor();
+    const g = {
+      def: a.def, hp: a.hp || 0, atk: a.atk || 0, dodge: a.dodge || 0, stamina: a.stamina || 0,
+      fireRes: a.fireRes || 0, thunderRes: a.thunderRes || 0, regen: 0, stRegen: 0, potion: 0, charge: 0, roarImmune: false,
+    };
+    for (const sk of armorSkills(a.id)) if (SKILLS[sk.id]) SKILLS[sk.id].apply(g, sk.lv);
+    g.def = Math.min(g.def, 0.6); g.fireRes = Math.min(g.fireRes, 0.7); g.thunderRes = Math.min(g.thunderRes, 0.7);
+    return g;
+  }
   function applyArmorLook() {
     const c = armor().color;
     hunter.plate.color.setHex(c.plate).convertSRGBToLinear();
     hunter.cloth.color.setHex(c.cloth).convertSRGBToLinear();
   }
-  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg", armor: "hunter", armors: ["hunter"] });
+  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg", armor: "hunter", armors: ["hunter"], armorSkills: {} });
+  let skillsRolledOnLoad = false;
   const normalizeSave = (s) => {
     const o = Object.assign(defaultSave(), s);
     o.best = Object.assign({}, o.best || {});
@@ -2302,13 +2365,24 @@
     o.armors = Array.isArray(o.armors) ? o.armors.slice() : ["hunter"];
     if (!o.armors.includes("hunter")) o.armors.unshift("hunter");
     if (!o.armors.includes(o.armor)) o.armor = "hunter";
+    o.armorSkills = Object.assign({}, o.armorSkills || {});
+    // 持っている防具にスキルがまだ無ければ付ける（以前のセーブ用）
+    for (const id of o.armors) {
+      const a = ARMORS.find((x) => x.id === id);
+      if (a && !Array.isArray(o.armorSkills[id])) { o.armorSkills[id] = rollSkills(a); skillsRolledOnLoad = true; }
+    }
     return o;
   };
-  let save = defaultSave();
+  let save = normalizeSave({});
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && s.v === 1) save = normalizeSave(s);
   } catch { /* 保存データなし */ }
+  // 読み込み時に付けたスキルはすぐ保存して、開き直すたびに変わらないようにする
+  if (skillsRolledOnLoad) {
+    save.updatedAt = Date.now();
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* 保存できない環境 */ }
+  }
   const hrOf = () => 1 + Math.floor(save.hrp / 250);
   const weapon = () => WEAPONS[clamp(save.weaponLv, 1, WEAPONS.length) - 1];
 
@@ -2429,7 +2503,8 @@
     $("pfWeapon").textContent = weapon().name;
     $("pfAtk").textContent = weapon().atk;
     $("pfArmor").textContent = armor().name;
-    $("pfDef").textContent = Math.round(armor().def * 100);
+    $("pfDef").textContent = Math.round(gear().def * 100);
+    $("pfSkills").textContent = armorSkills(armor().id).map(skillLabel).join("、") || "なし";
     const s = save.suspend;
     $("continueBtn").hidden = !s;
     if (s) {
@@ -2487,6 +2562,13 @@
     }
   }
   const hasCost = (a) => save.zenny >= a.z && Object.entries(a.cost).every(([k, n]) => (save.items[k] || 0) >= n);
+  let pendingRoll = null; // { id, skills } 錬成の結果（選ぶまで保留）
+  function skillLine(cls, label, skills) {
+    const p = document.createElement("p"); p.className = "armor-skills " + cls;
+    const b = document.createElement("b"); b.textContent = label;
+    p.append(b, skills.length ? skills.map(skillLabel).join("、") : "なし");
+    return p;
+  }
   function renderArmors() {
     const list = $("armorList");
     list.innerHTML = "";
@@ -2498,9 +2580,14 @@
       const nm = document.createElement("b"); nm.textContent = a.name;
       const st = document.createElement("span"); st.textContent = `防御 ${Math.round(a.def * 100)}%`;
       head.append(nm, st);
-      const sk = document.createElement("p"); sk.className = "armor-skills"; sk.textContent = "スキル：" + a.skills.join("、");
-      li.append(head, sk);
-      if (!owned) {
+      li.append(head, skillLine("", "固定スキル：", []));
+      li.lastChild.lastChild.textContent = a.skills.join("、");
+      if (owned) {
+        li.append(skillLine("rand", "ランダムスキル：", armorSkills(a.id)));
+      } else {
+        const rs = document.createElement("p"); rs.className = "armor-skills rand";
+        rs.textContent = `ランダムスキル：作ると${a.slots[0] === a.slots[1] ? a.slots[0] : a.slots[0] + "〜" + a.slots[1]}個付く`;
+        li.append(rs);
         const cost = document.createElement("p"); cost.className = "armor-cost";
         const rows = Object.entries(a.cost).map(([k, n]) => [MATS[k], save.items[k] || 0, n]);
         rows.push(["所持金", save.zenny, a.z]);
@@ -2515,12 +2602,34 @@
         });
         li.append(cost);
       }
+      const row = document.createElement("div"); row.className = "armor-btns";
       const btn = document.createElement("button");
       btn.type = "button";
       if (on) { btn.textContent = "装備中"; btn.disabled = true; }
       else if (owned) { btn.textContent = "装備する"; btn.addEventListener("click", () => equipArmor(a.id)); }
       else { btn.textContent = "作る"; btn.disabled = !hasCost(a); btn.addEventListener("click", () => craftArmor(a.id)); }
-      li.append(btn);
+      row.append(btn);
+      if (owned && !(pendingRoll && pendingRoll.id === a.id)) {
+        const rr = document.createElement("button");
+        rr.type = "button"; rr.className = "ghost";
+        rr.textContent = `スキル錬成（${a.reroll.toLocaleString("ja-JP")}z）`;
+        rr.disabled = save.zenny < a.reroll || !!pendingRoll;
+        rr.addEventListener("click", () => rerollArmor(a.id));
+        row.append(rr);
+      }
+      li.append(row);
+      if (pendingRoll && pendingRoll.id === a.id) {
+        const box = document.createElement("div"); box.className = "roll-box";
+        box.append(skillLine("new", "錬成の結果：", pendingRoll.skills));
+        const keep = document.createElement("div"); keep.className = "armor-btns";
+        const take = document.createElement("button"); take.type = "button"; take.textContent = "新しいスキルにする";
+        take.addEventListener("click", () => settleRoll(true));
+        const back = document.createElement("button"); back.type = "button"; back.className = "ghost"; back.textContent = "前のスキルのままにする";
+        back.addEventListener("click", () => settleRoll(false));
+        keep.append(take, back);
+        box.append(keep);
+        li.append(box);
+      }
       list.append(li);
     }
   }
@@ -2530,10 +2639,28 @@
     for (const [k, n] of Object.entries(a.cost)) save.items[k] -= n;
     save.zenny -= a.z;
     save.armors.push(id);
+    save.armorSkills[id] = rollSkills(a);
     save.armor = id;
     applyArmorLook();
-    persist(`${a.name}を作って装備しました`);
+    persist(`${a.name}を作って装備しました（${save.armorSkills[id].map((k) => SKILLS[k.id].name).join("・")}）`);
     sfx.clear();
+    renderSmith();
+    renderTitle();
+  }
+  function rerollArmor(id) {
+    const a = ARMORS.find((x) => x.id === id);
+    if (!a || !save.armors.includes(id) || save.zenny < a.reroll || pendingRoll) return;
+    save.zenny -= a.reroll;
+    persist();
+    pendingRoll = { id, skills: rollSkills(a) };
+    sfx.charge(3);
+    renderSmith();
+  }
+  function settleRoll(take) {
+    if (!pendingRoll) return;
+    if (take) save.armorSkills[pendingRoll.id] = pendingRoll.skills;
+    pendingRoll = null;
+    persist(take ? "新しいスキルにしました" : "前のスキルのままにしました");
     renderSmith();
     renderTitle();
   }
@@ -2701,7 +2828,10 @@
   $("quitBtn").addEventListener("click", () => { save.suspend = null; persist(); toTitle(); });
   $("pauseBtn").addEventListener("click", () => (game.state === "play" ? pause() : resume()));
   $("smithBtn").addEventListener("click", () => { renderSmith(); $("titleScreen").hidden = true; $("smithScreen").hidden = false; });
-  $("smithBack").addEventListener("click", () => { $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle(); });
+  $("smithBack").addEventListener("click", () => {
+    if (pendingRoll) settleRoll(false); // 選ばずに戻ったら前のスキルのまま
+    $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle();
+  });
   $("upgradeBtn").addEventListener("click", upgrade);
   document.querySelectorAll(".quest-tabs button[data-q]").forEach((b) => b.addEventListener("click", () => { selectQuest(b.dataset.q); persist(); }));
   document.querySelectorAll(".quest-tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => {
