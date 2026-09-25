@@ -361,7 +361,7 @@
   <div class="bar" aria-label="竜の体力"><i id="mhpFill"></i></div>
 </div>
 <div class="hint" id="hint" hidden>
-  WASD/矢印キー 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック/K <span id="hintStrong">溜め</span><br>
+  WASD/矢印キー 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック長押し/K <span id="hintStrong">溜め斬り</span><br>
   Space 回避 ・ R 回復薬 ・ Q 注目 ・ マウス カメラ ・ P 一時停止
 </div>
 <div id="hurtFx"></div>
@@ -408,14 +408,14 @@
     <div class="controls" id="ctlDesk">
       <span><kbd>WASD</kbd><kbd>↑↓←→</kbd>移動</span>
       <span><kbd>Shift</kbd>ダッシュ</span>
-      <span><kbd>クリック</kbd><kbd>J</kbd>攻撃</span>
-      <span><kbd>右クリック</kbd><kbd>K</kbd>強攻撃（武器ごと）</span>
+      <span><kbd>クリック</kbd><kbd>J</kbd><span id="ctlAtk">3連斬り</span></span>
+      <span><kbd>右長押し</kbd><kbd>K</kbd><span id="ctlStrong">溜め斬り</span></span>
       <span><kbd>Space</kbd>回避（無敵）</span>
       <span><kbd>R</kbd>回復薬</span>
       <span><kbd>Q</kbd>竜の方を向く</span>
       <span><kbd>マウス</kbd>カメラ</span>
     </div>
-    <p class="q-note" id="ctlTouch" hidden>左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で連続攻撃。右下の強攻撃ボタン（武器によって「溜め」「剣舞」「溜め撃ち」）は長押しして離す。「回避」中は無敵。</p>
+    <p class="q-note" id="ctlTouch" hidden>左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で3連斬り、「溜め」は長押しして離す。「回避」中は無敵。</p>
     <p id="loadErr" hidden>3D描画ライブラリを読み込めませんでした。通信状態を確認して再読み込みしてください。</p>
     <button class="btn alt" id="continueBtn" type="button" hidden>続きから<small id="continueInfo"></small></button>
     <button class="btn" id="startBtn" type="button">出発する</button>
@@ -462,7 +462,7 @@
     <div class="pane" id="smWeaponPane">
       <div class="wtypes" id="wtypes" role="group" aria-label="武器の種類"></div>
       <p class="q-note" id="wtypeDesc"></p>
-      <p class="save-note">強化段階は全部の武器で共通です</p>
+      <p class="save-note" id="wtypeNote">強化段階は全部の武器で共通です</p>
       <h2 id="smWeapon">鉄刀</h2>
       <p class="weapon-line">攻撃力 <b id="smAtk">100</b></p>
       <h3 id="smNextHead">次の強化</h3>
@@ -488,6 +488,8 @@
   "use strict";
   // テスト版（test.html）は make-test.py がここを true にして生成する。この本体では常に false。
   const TEST_MODE = true;
+  // 大剣・双剣・弓・ハンマーはテスト版だけで使える（本番は太刀のみ）
+  const WEAPON_TYPES_ON = TEST_MODE;
   const $ = (id) => document.getElementById(id);
   if (!window.THREE) {
     $("loadErr").hidden = false;
@@ -1403,7 +1405,7 @@
       chargeLv: [0.5, 1.0, 1.5], heavyDmg: [55, 85, 125, 170],
       desc: "頭を叩き続けると竜が気絶する。溜めて離すと下からの振り上げで、頭に当てやすい。" },
   };
-  const WT = () => WTYPES[save.wtype] || WTYPES.katana;
+  const WT = () => (WEAPON_TYPES_ON && WTYPES[save.wtype]) || WTYPES.katana;
 
   // 攻撃ごとの動き。keys = [進み具合, 右腕の前後, 右腕の左右]、lkeys があれば左腕を別に動かす
   // hits = 当たりが出る時間帯（秒）。dmg はその1回ごとの威力
@@ -1787,8 +1789,12 @@
     w.bow.visible = W.id === "bow";
     const sb = document.querySelector('.tb[data-act="strong"]');
     if (sb) sb.textContent = W.strongLabel;
-    const hs = $("hintStrong");
-    if (hs) hs.textContent = W.strongLabel;
+    if (WEAPON_TYPES_ON) {
+      $("hintStrong").textContent = W.strongLabel;
+      $("ctlAtk").textContent = "攻撃（武器ごと）";
+      $("ctlStrong").textContent = "強攻撃（武器ごと）";
+      $("ctlTouch").textContent = "左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で連続攻撃。右下の強攻撃ボタン（武器によって「溜め」「剣舞」「溜め撃ち」）は長押しして離す。「回避」中は無敵。";
+    }
   }
 
   const pose = { armRx: -0.3, armRy: 0, armLx: -0.2, armLy: 0, wrist: -1.2, lwrist: -1.2, torsoX: 0, torsoY: 0, legL: 0, legR: 0, bodyX: 0, bodyY: 0.9, headX: 0 };
@@ -2730,7 +2736,7 @@
     bow: ["鉄弓", "鉄弓【改】", "焔弓ヴァルグ", "焔弓ヴァルグ改", "焔尾弓【灼】", "蒼雷弓ゼルガ", "雷弓【轟】", "獄炎弓アグニヴァ", "獄炎弓【焦天】", "天冥弓ゼノギア", "極星弓【天冥】"],
     hammer: ["鉄鎚", "鉄鎚【改】", "焔鎚ヴァルグ", "焔鎚ヴァルグ改", "焔尾大鎚【灼】", "蒼雷鎚ゼルガ", "雷鎚【轟】", "獄炎鎚アグニヴァ", "獄炎鎚【焦天】", "天冥鎚ゼノギア", "極星鎚【天冥】"],
   };
-  const weaponName = (lv = save.weaponLv, type = save.wtype) =>
+  const weaponName = (lv = save.weaponLv, type = WT().id) =>
     WNAMES[type] ? WNAMES[type][clamp(lv, 1, WEAPONS.length) - 1] : WEAPONS[clamp(lv, 1, WEAPONS.length) - 1].name;
 
   let cloud = null, cloudTimer = 0, localOk = true;
@@ -2878,7 +2884,7 @@
     $("pfBestLabel").textContent = `最速（${q.short}）`;
     $("pfBest").textContent = save.best[q.id] == null ? "--:--" : fmtTime(save.best[q.id]);
     $("pfZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
-    $("pfWeapon").textContent = `${weaponName()}（${WT().name}）`;
+    $("pfWeapon").textContent = WEAPON_TYPES_ON ? `${weaponName()}（${WT().name}）` : weaponName();
     $("pfAtk").textContent = weapon().atk;
     $("pfArmor").textContent = armor().name;
     $("pfDef").textContent = Math.round(gear().def * 100);
@@ -2896,6 +2902,10 @@
   // ================= 加工屋 =================
   function renderWtypes() {
     const box = $("wtypes");
+    if (!WEAPON_TYPES_ON) {
+      box.hidden = true; $("wtypeDesc").hidden = true; $("wtypeNote").hidden = true;
+      return;
+    }
     box.innerHTML = "";
     for (const W of Object.values(WTYPES)) {
       const b = document.createElement("button");
