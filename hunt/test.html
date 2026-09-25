@@ -1166,7 +1166,7 @@
       flinchAcc: 0, flinchTh: SP.flinch, tailHp: SP.tailHp, tailCut: false, air: 0, comboLeft: 0, jump: null, landed: false,
       awake: false, pendingAwake: false, awakeRoar: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
       wander: null, wanderWait: 0, spinBase: 0, chargeDist: 0, fired: false, roared: false, totalDmg: 0,
-      stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false, stunAcc: 0, stunTh: 350 * SP.size,
+      stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false, closeT: 0, stunAcc: 0, stunTh: 350 * SP.size,
       pose: { neckX: -0.15, neckY: 0, jaw: 0.05, tiltZ: 0, tiltX: 0, tiltY: 0, legOut: 0, tailCurl: 0, wing: 0 },
     });
     mon.tailSegs[3].visible = true;
@@ -2063,6 +2063,8 @@
 
   function chooseAttack(dist, ang) {
     const a = Math.abs(ang), r = Math.random(), z = SP.size;
+    // 足元に居座るハンターは、踏みつけか尻尾回転で払う
+    if (M.closeT > 1.5) { M.closeT = 0; return r < 0.55 ? "stomp" : "tailSpin"; }
     const has = (m) => SP.moves.includes(m);
     const pick = (list) => { const ok = list.filter(has); return ok.length ? ok[(Math.random() * ok.length) | 0] : null; };
     if (M.awake && dist > 5 && r < 0.14) return "starfall";
@@ -2077,9 +2079,11 @@
 
   function monsterHitsPlayer(list, dmg, down) {
     if (M.hitDone) return;
-    const pc = tmpV.set(P.pos.x, P.pos.y + 0.9, P.pos.z);
     for (const [p, r] of list) {
-      if (p.w.distanceTo(pc) < r * SP.size + 0.5) {
+      // 竜の部位は高い所にあるので、球ではなく「下の方まで届く筒」で当たりを見る
+      const R = r * SP.size;
+      const hd = Math.hypot(p.w.x - P.pos.x, p.w.z - P.pos.z);
+      if (hd < R + 0.5 && p.w.y - R * 1.6 < P.pos.y + 1.8 && p.w.y + R > P.pos.y) {
         if (hitPlayer(Math.round(dmg * SP.dmg), down, M.pos.x, M.pos.z)) M.hitDone = true;
         return;
       }
@@ -2214,6 +2218,7 @@
     const ang = angDiff(M.yaw, toP);
     const spMul = (M.enraged ? 1.25 : 1) * (M.limp ? 0.7 : 1) * SP.speed;
     const targetable = P.state !== "faint" && game.state === "play";
+    M.closeT = targetable && dist < 4.3 * SP.size ? (M.closeT || 0) + dt : Math.max(0, (M.closeT || 0) - dt);
     let speed = 0;
     const T = M.stateT;
 
@@ -2278,7 +2283,7 @@
           M.yaw = M.spinBase - 0.5 + (TAU + 0.5) * smooth((T - 0.5) / 0.55);
           if (T > 0.55) {
             const list = P_TAIL.filter((p) => !(M.tailCut && p.seg >= 3)).map((p) => [p, 1.1]);
-            list.push([P_BODYR, 2.0], [P_BODY, 2.0]);
+            list.push([P_BODYR, 2.6], [P_BODY, 2.6]);
             monsterHitsPlayer(list, 32, true);
           }
         } else M.yaw = M.spinBase;
@@ -2336,6 +2341,20 @@
           else scatterStrikes(n, [M.state === "pillars" ? "fire" : "bolt"], 6, 1.0, 0.14);
         }
         if (T >= (star ? 3.0 : 2.0)) endAttack();
+        break;
+      }
+      case "stomp": {
+        if (T >= 0.6 && !M.fired) {
+          M.fired = true;
+          sfx.boom(); sfx.step();
+          cam.shake = 0.7;
+          for (let i = 0; i < 28; i++) {
+            const a = (i / 28) * TAU;
+            emit(tmpV2.set(M.pos.x + Math.cos(a) * 3.5 * SP.size, M.pos.y + 0.3, M.pos.z + Math.sin(a) * 3.5 * SP.size), 0x9a8a7a, 2, 5, { life: 0.7, grav: 3 });
+          }
+          if (Math.hypot(P.pos.x - M.pos.x, P.pos.z - M.pos.z) < 4.8 * SP.size) hitPlayer(Math.round(28 * SP.dmg), true, M.pos.x, M.pos.z);
+        }
+        if (T >= 1.4) endAttack();
         break;
       }
       case "nova": {
@@ -2494,6 +2513,10 @@
         if (T < 0.7) { t.neckX = -0.75; t.jaw = 0.7; mon.mouthGlow.visible = true; mon.mouthGlow.scale.setScalar(0.5 + T); }
         else if (T < 0.95) { t.neckX = 0.3; t.jaw = 0.9; }
         else t.neckX = -0.05;
+        break;
+      case "stomp":
+        if (T < 0.6) { t.tiltX = -0.32; t.neckX = -0.6; t.jaw = 0.5; t.wing = 0.8; t.tiltY = 0.4; }
+        else { t.tiltX = 0.12; t.neckX = 0.3; t.tiltY = -0.2; t.legOut = 0.2; }
         break;
       case "nova":
         if (T < 1.2) { t.neckX = 0.45; t.tiltY = -0.45; t.wing = 1; t.jaw = 0.3; }
