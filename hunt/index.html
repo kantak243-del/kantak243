@@ -33,7 +33,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
 
   /* ---------- HUD ---------- */
   .hud {
@@ -159,7 +159,7 @@
   /* ---------- 依頼書・画面 ---------- */
   .overlay {
     position: fixed; inset: 0;
-    display: grid; place-items: center;
+    display: flex;
     padding: 16px;
     background: rgba(23, 19, 15, 0.45);
     overflow-y: auto;
@@ -173,6 +173,7 @@
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(23, 19, 15, 0.2), inset 0 0 40px rgba(120, 84, 40, 0.18);
     display: flex; flex-direction: column; gap: 14px;
     position: relative;
+    margin: auto;
   }
   .q-head { display: flex; justify-content: space-between; align-items: center; }
   .q-rank { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: #7a4a22; }
@@ -224,6 +225,30 @@
   .rewards li.rare { color: var(--blood); font-weight: 700; }
   .rewards b { font-family: var(--num); }
   #loadErr { color: var(--blood); font-size: 13px; margin: 0; }
+  .profile {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+    padding: 10px 0; border-block: 2px solid rgba(23, 19, 15, 0.8);
+  }
+  .profile div { display: flex; flex-direction: column; gap: 2px; }
+  .profile small { font-size: 10px; letter-spacing: 0.08em; color: #7a4a22; font-weight: 700; }
+  .profile b { font-family: var(--num); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .weapon-line { margin: 0; font-size: 13px; color: #4a3a2c; }
+  .weapon-line b { color: var(--ink); }
+  .btn small { display: block; margin-top: 6px; font: 400 12px/1 var(--body); letter-spacing: 0.04em; opacity: 0.8; }
+  .btn.alt { background: #6b3a1c; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .save-note { margin: 0; font-size: 11px; color: #7a6a58; text-align: center; }
+  .cost { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; }
+  .cost li { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(23, 19, 15, 0.25); padding-bottom: 4px; }
+  .cost li.short b { color: var(--blood); }
+  .cost b { font-family: var(--num); }
+  #saveToast {
+    position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    padding: 8px 14px; border-radius: 6px;
+    background: var(--panel); color: var(--bone); font-size: 13px;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  #saveToast.show { opacity: 1; }
 
   @media (max-width: 640px) {
     .monster-panel { top: calc(env(safe-area-inset-top, 0px) + 84px); width: min(64vw, 300px); }
@@ -232,7 +257,7 @@
   }
 </style>
 
-<canvas id="c" aria-label="狩猟フィールド"></canvas>
+<canvas id="c" tabindex="-1" aria-label="狩猟フィールド"></canvas>
 
 <div class="hud" id="hud" hidden>
   <div class="hunter-panel">
@@ -275,6 +300,13 @@
   <div class="quest">
     <div class="q-head"><span class="q-rank">★4 狩猟クエスト</span><span class="stamp">受注</span></div>
     <h1>焔尾竜討伐</h1>
+    <div class="profile">
+      <div><small>ハンターランク</small><b id="pfHr">1</b></div>
+      <div><small>討伐数</small><b id="pfClears">0</b></div>
+      <div><small>最速</small><b id="pfBest">--:--</b></div>
+      <div><small>所持金</small><b id="pfZenny">0z</b></div>
+    </div>
+    <p class="weapon-line">装備：<b id="pfWeapon">鉄刀</b>（攻撃力 <span id="pfAtk">100</span>）</p>
     <dl class="q-meta">
       <div><dt>目的</dt><dd>焔尾竜ヴァルグ 1頭の狩猟</dd></div>
       <div><dt>狩猟地</dt><dd>灰霧の谷</dd></div>
@@ -283,18 +315,21 @@
     </dl>
     <p class="q-note">依頼主：谷の見張り番 ─ 尻尾に火を宿した竜が谷に居座っている。弱点は頭、尻尾は斬り落とせるはずだ。怒ると火球を吐くから気をつけろ。</p>
     <div class="controls" id="ctlDesk">
-      <span><kbd>WASD</kbd>移動</span>
+      <span><kbd>WASD</kbd><kbd>↑↓←→</kbd>移動</span>
       <span><kbd>Shift</kbd>ダッシュ</span>
       <span><kbd>クリック</kbd><kbd>J</kbd>3連斬り</span>
       <span><kbd>右長押し</kbd><kbd>K</kbd>溜め斬り</span>
       <span><kbd>Space</kbd>回避（無敵）</span>
       <span><kbd>R</kbd>回復薬</span>
       <span><kbd>Q</kbd>竜の方を向く</span>
-      <span><kbd>マウス</kbd><kbd>←→</kbd>カメラ</span>
+      <span><kbd>マウス</kbd>カメラ</span>
     </div>
     <p class="q-note" id="ctlTouch" hidden>左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で3連斬り、「溜め」は長押しして離す。「回避」中は無敵。</p>
     <p id="loadErr" hidden>3D描画ライブラリを読み込めませんでした。通信状態を確認して再読み込みしてください。</p>
+    <button class="btn alt" id="continueBtn" type="button" hidden>続きから<small id="continueInfo"></small></button>
     <button class="btn" id="startBtn" type="button">出発する</button>
+    <button class="btn-ghost" id="smithBtn" type="button">加工屋で武器を強化</button>
+    <p class="save-note" id="saveNote">セーブ：このブラウザに自動保存</p>
   </div>
 </div>
 
@@ -302,6 +337,7 @@
   <div class="quest">
     <h2>一時停止</h2>
     <button class="btn" id="resumeBtn" type="button">狩りに戻る</button>
+    <button class="btn-ghost" id="suspendBtn" type="button">中断してタイトルへ（続きから再開できます）</button>
     <button class="btn-ghost" id="quitBtn" type="button">クエストをリタイア</button>
   </div>
 </div>
@@ -314,12 +350,30 @@
       <div><dt>狩猟時間</dt><dd id="resTime">00:00</dd></div>
       <div><dt>与えた傷</dt><dd id="resDmg">0</dd></div>
       <div><dt>力尽き</dt><dd id="resCarts">0 回</dd></div>
+      <div id="resHrRow"><dt>HRポイント</dt><dd id="resHr">+0</dd></div>
     </dl>
     <h3 id="rewardHead">報酬</h3>
     <ul class="rewards" id="rewards"></ul>
+    <p class="save-note" id="resNote">報酬はアイテムボックスに入れて保存しました</p>
     <button class="btn" id="againBtn" type="button">もう一度挑む</button>
+    <button class="btn-ghost" id="toTitleBtn" type="button">タイトルへ（加工屋で強化する）</button>
   </div>
 </div>
+
+<div class="overlay" id="smithScreen" hidden>
+  <div class="quest">
+    <div class="q-head"><span class="q-rank">加工屋</span><span class="stamp">鍛冶</span></div>
+    <h2 id="smWeapon">鉄刀</h2>
+    <p class="weapon-line">攻撃力 <b id="smAtk">100</b>　・　所持金 <b id="smZenny">0z</b></p>
+    <h3 id="smNextHead">次の強化</h3>
+    <ul class="cost" id="smCost"></ul>
+    <button class="btn" id="upgradeBtn" type="button">強化する</button>
+    <h3>アイテムボックス</h3>
+    <ul class="rewards" id="itemBox"></ul>
+    <button class="btn-ghost" id="smithBack" type="button">もどる</button>
+  </div>
+</div>
+<div id="saveToast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -832,7 +886,7 @@
   const P_TAIL = partBy("tail");
 
   // ================= 状態 =================
-  const game = { state: "title", time: 0, hitStop: 0 };
+  const game = { state: "title", time: 0, hitStop: 0, saveT: 0 };
   const CAMP = new V3(0, 0, 46);
   const P = {};
   const M = {};
@@ -873,8 +927,8 @@
     moveVec() {
       if (this.joy.active) return { x: this.joy.x, y: this.joy.y, mag: Math.hypot(this.joy.x, this.joy.y) };
       const k = this.keys;
-      const x = (k.has("KeyD") ? 1 : 0) - (k.has("KeyA") ? 1 : 0);
-      const y = (k.has("KeyW") ? 1 : 0) - (k.has("KeyS") ? 1 : 0);
+      const x = (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
+      const y = (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) - (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0);
       const m = Math.hypot(x, y);
       return m > 0 ? { x: x / m, y: y / m, mag: 1 } : { x: 0, y: 0, mag: 0 };
     },
@@ -912,6 +966,7 @@
     if (game.state !== "play") return;
     if (document.pointerLockElement === canvas || (e.buttons & 1)) {
       cam.yaw -= e.movementX * 0.0028;
+      cam.idleT = 0;
       cam.pitch = clamp(cam.pitch + e.movementY * 0.002, 0.05, 0.95);
     }
   });
@@ -944,6 +999,7 @@
     $("lookZone").addEventListener("pointermove", (e) => {
       if (!look || e.pointerId !== look.id) return;
       cam.yaw -= (e.clientX - look.x) * 0.006;
+      cam.idleT = 0;
       cam.pitch = clamp(cam.pitch + (e.clientY - look.y) * 0.004, 0.05, 0.95);
       look.x = e.clientX; look.y = e.clientY;
     });
@@ -970,7 +1026,7 @@
   }
 
   // ================= カメラ =================
-  const cam = { yaw: 0, pitch: 0.3, dist: 10, focusT: 0, focusYaw: 0, shake: 0, target: new V3() };
+  const cam = { yaw: 0, pitch: 0.3, dist: 10, focusT: 0, focusYaw: 0, shake: 0, target: new V3(), idleT: 0 };
   function focusMonster() {
     cam.focusYaw = Math.atan2(-(M.pos.x - P.pos.x), -(M.pos.z - P.pos.z));
     cam.focusT = 0.35;
@@ -983,12 +1039,10 @@
       camera.lookAt(M.pos.x, 3, M.pos.z);
       return;
     }
-    if (game.state === "play") {
-      const k = input.keys;
-      if (k.has("ArrowLeft")) cam.yaw += 2.2 * dt;
-      if (k.has("ArrowRight")) cam.yaw -= 2.2 * dt;
-      if (k.has("ArrowUp")) cam.pitch = clamp(cam.pitch - 1.2 * dt, 0.05, 0.95);
-      if (k.has("ArrowDown")) cam.pitch = clamp(cam.pitch + 1.2 * dt, 0.05, 0.95);
+    // 手動で回していない間は、前に進むとカメラがゆっくり背中側へ回り込む
+    cam.idleT += dt;
+    if (game.state === "play" && cam.idleT > 1.2 && cam.focusT <= 0 && P.state === "move" && P.moveSpeed > 0.5 && input.moveVec().y > 0.3) {
+      cam.yaw += angDiff(cam.yaw, P.yaw + Math.PI) * Math.min(1, dt * 1.2);
     }
     if (cam.focusT > 0) {
       cam.yaw += angDiff(cam.yaw, cam.focusYaw) * Math.min(1, dt * 12);
@@ -1267,7 +1321,7 @@
     h.legL.rotation.x = pose.legL;
     h.legR.rotation.x = pose.legR;
     // 溜めの光
-    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : 0x000000;
+    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
     h.bladeMat.emissive.setHex(glow);
     // 無敵中は少し点滅
     h.root.visible = !(P.state !== "dodge" && P.iframe > 0 && P.state !== "faint" && Math.floor(P.iframe * 16) % 2 === 0 && P.iframe < 1.5 && P.state !== "down");
@@ -1288,7 +1342,7 @@
     if (!best) return;
     P.hitDone = true;
     const base = P.action === "heavy" ? HEAVY_DMG[P.heavyLvl] : a.dmg;
-    const dmg = Math.round(base * best.mult * (0.9 + Math.random() * 0.2));
+    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (0.9 + Math.random() * 0.2));
     const at = tmpV2.copy(c).lerp(best.w, 0.6);
     damageMonster(dmg, best, at);
     const heavy = P.action === "heavy" || P.action === "s3";
@@ -1730,7 +1784,7 @@
     ui.dmg.appendChild(el);
   }
   const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-  let lastClock = "";
+  var lastClock = "";
   function updateUI(dt) {
     P.hpLag = P.hpLag > P.hp ? Math.max(P.hp, P.hpLag - 35 * dt) : P.hp;
     ui.hpFill.style.width = (P.hp / P.maxHp) * 100 + "%";
@@ -1744,81 +1798,315 @@
     if (c !== lastClock) { ui.clock.textContent = c; lastClock = c; }
   }
 
-  // ================= 進行 =================
-  function startQuest() {
-    initAudio();
+  // ================= セーブ =================
+  const SAVE_KEY = "enbiryu-save-v1";
+  const MATS = {
+    scale: "焔尾竜の鱗", shell: "焔尾竜の甲殻", fang: "焔尾竜の牙", claw: "焔尾竜の爪",
+    crystal: "灰霧の結晶", sac: "焔尾竜の火炎袋", tail: "焔尾竜の尻尾", orb: "焔竜玉",
+  };
+  const RARE = new Set(["tail", "orb"]);
+  const DROP_TABLE = ["scale", "scale", "scale", "shell", "shell", "fang", "claw", "crystal", "sac"];
+  const WEAPONS = [
+    { name: "鉄刀", atk: 100 },
+    { name: "鉄刀【改】", atk: 115, cost: { scale: 3, fang: 1 }, z: 3000 },
+    { name: "焔刀ヴァルグ", atk: 132, cost: { scale: 4, shell: 3, claw: 2 }, z: 6000 },
+    { name: "焔刀ヴァルグ改", atk: 150, cost: { shell: 4, sac: 2, tail: 1 }, z: 10000 },
+    { name: "焔尾大刀【灼】", atk: 172, cost: { orb: 1, sac: 3, crystal: 4 }, z: 15000 },
+  ];
+  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, zenny: 0, weaponLv: 1, items: {}, suspend: null });
+  let save = defaultSave();
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && s.v === 1) save = Object.assign(defaultSave(), s);
+  } catch { /* 保存データなし */ }
+  const hrOf = () => 1 + Math.floor(save.hrp / 250);
+  const weapon = () => WEAPONS[clamp(save.weaponLv, 1, WEAPONS.length) - 1];
+
+  let cloud = null, cloudTimer = 0, localOk = true;
+  function writeLocal() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); localOk = true; } catch { localOk = false; }
+  }
+  async function pushCloud(retry = true) {
+    if (!cloud) return;
+    try {
+      await cloud.set(JSON.parse(JSON.stringify(save)));
+    } catch (e) {
+      const code = e && e.code;
+      if ((code === "unavailable" || code === "resource_exhausted") && retry) {
+        setTimeout(() => pushCloud(false), 1500 + Math.random() * 1500);
+      } else if (code !== "unavailable" && code !== "resource_exhausted") {
+        cloud = null; // このビューでは書けない。ブラウザ保存だけ続ける
+        renderSaveNote();
+      }
+    }
+  }
+  function persist(toast) {
+    save.updatedAt = Date.now();
+    writeLocal();
+    if (cloud) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 600); }
+    if (toast) showToast(localOk || cloud ? toast : "保存できませんでした（ブラウザの保存が無効です）");
+  }
+  let toastTimer = 0;
+  function showToast(text) {
+    const el = $("saveToast");
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+  }
+  function renderSaveNote() {
+    $("saveNote").textContent = cloud
+      ? "セーブ：アカウントに自動保存（ほかの端末でも続きから遊べます）"
+      : localOk ? "セーブ：このブラウザに自動保存" : "セーブ：このブラウザでは保存できません";
+  }
+  async function initCloud() {
+    try {
+      if (!window.claude || typeof window.claude.use !== "function") return;
+      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!db || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      const ref = db.doc("data/users/" + id + "/save");
+      const snap = await ref.get();
+      cloud = ref;
+      const remote = snap.exists ? snap.data() : null;
+      if (remote && remote.v === 1 && (remote.updatedAt || 0) > (save.updatedAt || 0)) {
+        if (game.state === "title") {
+          save = Object.assign(defaultSave(), JSON.parse(JSON.stringify(remote)));
+          writeLocal();
+          renderTitle();
+        }
+      } else if (save.updatedAt > 0) {
+        pushCloud();
+      }
+    } catch { cloud = null; }
+    renderSaveNote();
+  }
+
+  // 中断データ
+  function snapshotQuest() {
+    return {
+      time: game.time,
+      p: { x: P.pos.x, z: P.pos.z, yaw: P.yaw, hp: Math.max(1, P.hp), st: P.st, potions: P.potions, carts: P.carts },
+      m: {
+        x: M.pos.x, z: M.pos.z, yaw: M.yaw, hp: M.hp, aware: M.aware, enraged: M.enraged, enrageT: M.enrageT,
+        enrageAcc: M.enrageAcc, firstEnrage: M.firstEnrage, limp: M.limp, flinchTh: M.flinchTh,
+        tailHp: M.tailHp, tailCut: M.tailCut, totalDmg: M.totalDmg,
+      },
+    };
+  }
+  function saveSuspend(toast) {
+    if (!["play", "pause"].includes(game.state) || M.state === "dead" || P.carts >= 3) return;
+    save.suspend = snapshotQuest();
+    persist(toast);
+  }
+  function applySuspend(s) {
     resetWorld();
+    game.time = s.time;
+    Object.assign(P, { hp: s.p.hp, hpLag: s.p.hp, st: s.p.st, potions: s.p.potions, carts: s.p.carts, yaw: s.p.yaw });
+    P.pos.set(s.p.x, 0, s.p.z);
+    Object.assign(M, s.m);
+    M.pos = new V3(s.m.x, 0, s.m.z);
+    delete M.x; delete M.z;
+    M.state = M.aware ? "chase" : "idle";
+    M.stateT = 0; M.atkCd = 1.5;
+    mon.tailSegs[3].visible = !M.tailCut;
+    setEnragedLook(M.enraged);
+    $("monPanel").hidden = !M.aware;
+    cam.yaw = P.yaw + Math.PI;
+    camera.position.set(P.pos.x - Math.sin(P.yaw) * 10, 6, P.pos.z - Math.cos(P.yaw) * 10);
+  }
+
+  function renderTitle() {
+    $("pfHr").textContent = hrOf();
+    $("pfClears").textContent = save.clears;
+    $("pfBest").textContent = save.bestTime == null ? "--:--" : fmtTime(save.bestTime);
+    $("pfZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
+    $("pfWeapon").textContent = weapon().name;
+    $("pfAtk").textContent = weapon().atk;
+    const s = save.suspend;
+    $("continueBtn").hidden = !s;
+    if (s) $("continueInfo").textContent = `経過 ${fmtTime(s.time)} ・ 竜の体力 ${Math.ceil((s.m.hp / 2800) * 100)}% ・ 力尽き ${s.p.carts}/3`;
+    $("startBtn").textContent = s ? "新しく出発する（中断データは消えます）" : "出発する";
+    renderSaveNote();
+  }
+
+  // ================= 加工屋 =================
+  function renderSmith() {
+    const w = weapon(), next = WEAPONS[save.weaponLv];
+    $("smWeapon").textContent = w.name;
+    $("smAtk").textContent = w.atk;
+    $("smZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
+    const cost = $("smCost");
+    cost.innerHTML = "";
+    let ok = !!next;
+    if (next) {
+      $("smNextHead").textContent = `次の強化：${next.name}（攻撃力 ${next.atk}）`;
+      const rows = Object.entries(next.cost).map(([k, n]) => [MATS[k], save.items[k] || 0, n]);
+      rows.push(["所持金", save.zenny, next.z]);
+      for (const [name, have, need] of rows) {
+        const li = document.createElement("li");
+        if (have < need) { li.className = "short"; ok = false; }
+        li.innerHTML = "<span></span><b></b>";
+        li.firstChild.textContent = name;
+        li.lastChild.textContent = name === "所持金"
+          ? `${have.toLocaleString("ja-JP")} / ${need.toLocaleString("ja-JP")}z`
+          : `${have} / ${need}`;
+        cost.appendChild(li);
+      }
+    } else {
+      $("smNextHead").textContent = "これ以上は強化できない。最強の太刀だ";
+    }
+    $("upgradeBtn").disabled = !ok;
+    $("upgradeBtn").hidden = !next;
+    const box = $("itemBox");
+    box.innerHTML = "";
+    const owned = Object.keys(MATS).filter((k) => save.items[k] > 0);
+    if (!owned.length) {
+      const li = document.createElement("li");
+      li.textContent = "まだ素材がない。ヴァルグを狩ろう";
+      box.appendChild(li);
+    }
+    for (const k of owned) {
+      const li = document.createElement("li");
+      if (RARE.has(k)) li.className = "rare";
+      li.innerHTML = "<span></span><b></b>";
+      li.firstChild.textContent = MATS[k];
+      li.lastChild.textContent = "×" + save.items[k];
+      box.appendChild(li);
+    }
+  }
+  function upgrade() {
+    const next = WEAPONS[save.weaponLv];
+    if (!next) return;
+    if (save.zenny < next.z || Object.entries(next.cost).some(([k, n]) => (save.items[k] || 0) < n)) return;
+    for (const [k, n] of Object.entries(next.cost)) save.items[k] -= n;
+    save.zenny -= next.z;
+    save.weaponLv++;
+    persist(`${next.name} に強化しました`);
+    sfx.clear();
+    renderSmith();
+    renderTitle();
+  }
+
+  // ================= 進行 =================
+  function enterPlay() {
     game.state = "play";
-    $("titleScreen").hidden = true;
-    $("resultScreen").hidden = true;
-    $("pauseScreen").hidden = true;
+    game.saveT = 0;
+    ["titleScreen", "resultScreen", "pauseScreen", "smithScreen"].forEach((id) => { $(id).hidden = true; });
     ui.hud.hidden = false;
     $("hint").hidden = isTouch;
     hunter.root.visible = true;
+    lastClock = "";
+    updateUI(0);
+    // 枠の中でもキー入力が届くようにする
+    try { window.focus(); canvas.focus({ preventScroll: true }); } catch { /* 無視 */ }
+  }
+  function startQuest() {
+    initAudio();
+    resetWorld();
+    save.suspend = null;
+    persist();
     camera.position.set(CAMP.x, CAMP.y + 5, CAMP.z + 10);
+    enterPlay();
     showMsg("クエスト開始！ 焔尾竜ヴァルグを狩猟せよ");
+  }
+  function continueQuest() {
+    if (!save.suspend) return;
+    initAudio();
+    applySuspend(save.suspend);
+    enterPlay();
+    showMsg("中断したところから再開");
   }
   function pause() {
     game.state = "pause";
     $("pauseScreen").hidden = false;
     input.keys.clear(); input.mouseStrong = false; input.touchStrong = false;
     if (document.pointerLockElement) document.exitPointerLock?.();
+    saveSuspend();
     $("resumeBtn").focus();
   }
   function resume() {
     game.state = "play";
     $("pauseScreen").hidden = true;
+    try { window.focus(); canvas.focus({ preventScroll: true }); } catch { /* 無視 */ }
   }
   function toTitle() {
     game.state = "title";
     resetWorld();
-    ["pauseScreen", "resultScreen", "hud", "hint", "monPanel"].forEach((id) => { $(id).hidden = true; });
+    ["pauseScreen", "resultScreen", "hud", "hint", "monPanel", "smithScreen"].forEach((id) => { $(id).hidden = true; });
     $("titleScreen").hidden = false;
+    renderTitle();
   }
 
-  const REWARDS = ["焔尾竜の鱗", "焔尾竜の甲殻", "焔尾竜の牙", "焔尾竜の爪", "灰霧の結晶", "焔尾竜の火炎袋"];
   function endQuest(success) {
     if (game.state !== "play") return;
     game.state = "result";
     if (document.pointerLockElement) document.exitPointerLock?.();
     ui.hud.hidden = true; $("hint").hidden = true; $("monPanel").hidden = true;
+    const time = success ? M.deadAt : game.time;
     $("resTitle").textContent = success ? "狩猟成功" : "クエスト失敗";
     $("resStamp").textContent = success ? "達成" : "失敗";
-    $("resTime").textContent = fmtTime(success ? M.deadAt : game.time);
-    $("resDmg").textContent = M.totalDmg.toLocaleString("ja-JP");
+    $("resTime").textContent = fmtTime(time);
+    $("resDmg").textContent = Math.round(M.totalDmg).toLocaleString("ja-JP");
     $("resCarts").textContent = `${P.carts} 回`;
     const list = $("rewards");
     list.innerHTML = "";
     $("rewardHead").hidden = !success;
+    $("resHrRow").hidden = !success;
+    save.hunts++;
+    save.suspend = null;
     if (success) {
-      const items = [];
-      const n = 5;
-      for (let i = 0; i < n; i++) {
-        const name = REWARDS[(Math.random() * REWARDS.length) | 0];
-        const it = items.find((x) => x.name === name);
-        if (it) it.q++; else items.push({ name, q: 1 });
+      const got = {};
+      for (let i = 0; i < 5; i++) {
+        const k = DROP_TABLE[(Math.random() * DROP_TABLE.length) | 0];
+        got[k] = (got[k] || 0) + 1;
       }
-      if (M.tailCut) items.push({ name: "焔尾竜の尻尾", q: 1, rare: true });
-      if (Math.random() < 0.06) items.push({ name: "焔竜玉", q: 1, rare: true });
-      items.push({ name: "報酬金", q: "7,200z" });
-      for (const it of items) {
+      if (M.tailCut) got.tail = (got.tail || 0) + 1;
+      if (Math.random() < (M.tailCut ? 0.12 : 0.08)) got.orb = 1;
+      for (const [k, n] of Object.entries(got)) {
+        save.items[k] = (save.items[k] || 0) + n;
         const li = document.createElement("li");
-        if (it.rare) li.className = "rare";
-        li.innerHTML = `<span></span><b></b>`;
-        li.firstChild.textContent = it.name;
-        li.lastChild.textContent = typeof it.q === "number" ? `×${it.q}` : it.q;
+        if (RARE.has(k)) li.className = "rare";
+        li.innerHTML = "<span></span><b></b>";
+        li.firstChild.textContent = MATS[k];
+        li.lastChild.textContent = "×" + n;
         list.appendChild(li);
       }
-    } else sfx.fail();
+      const li = document.createElement("li");
+      li.innerHTML = "<span>報酬金</span><b>7,200z</b>";
+      list.appendChild(li);
+      const hrGain = 100 + (M.tailCut ? 50 : 0) + (P.carts === 0 ? 50 : 0);
+      const beforeHr = hrOf();
+      save.hrp += hrGain;
+      save.zenny += 7200;
+      save.clears++;
+      if (save.bestTime == null || time < save.bestTime) save.bestTime = time;
+      $("resHr").textContent = `+${hrGain}` + (hrOf() > beforeHr ? `（HR ${hrOf()} に上がった！）` : "");
+      $("resNote").textContent = "報酬はアイテムボックスに入れて保存しました";
+    } else {
+      sfx.fail();
+      $("resNote").textContent = "記録を保存しました";
+    }
+    persist();
     $("resultScreen").hidden = false;
     $("againBtn").focus();
   }
 
   $("startBtn").addEventListener("click", startQuest);
+  $("continueBtn").addEventListener("click", continueQuest);
   $("againBtn").addEventListener("click", startQuest);
+  $("toTitleBtn").addEventListener("click", toTitle);
   $("resumeBtn").addEventListener("click", resume);
-  $("quitBtn").addEventListener("click", toTitle);
+  $("suspendBtn").addEventListener("click", () => { saveSuspend("中断データを保存しました"); toTitle(); });
+  $("quitBtn").addEventListener("click", () => { save.suspend = null; persist(); toTitle(); });
   $("pauseBtn").addEventListener("click", () => (game.state === "play" ? pause() : resume()));
+  $("smithBtn").addEventListener("click", () => { renderSmith(); $("titleScreen").hidden = true; $("smithScreen").hidden = false; });
+  $("smithBack").addEventListener("click", () => { $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle(); });
+  $("upgradeBtn").addEventListener("click", upgrade);
+  window.addEventListener("pagehide", () => { if (game.state === "play" || game.state === "pause") { save.suspend = snapshotQuest(); save.updatedAt = Date.now(); writeLocal(); } });
+  renderTitle();
+  initCloud();
 
   // ================= ループ =================
   function resize() {
@@ -1844,7 +2132,11 @@
       updatePlayer(gdt);
       updateMonster(gdt);
       updateFireballs(gdt);
-      if (game.state === "play") updateUI(dt);
+      if (game.state === "play") {
+        updateUI(dt);
+        game.saveT += dt;
+        if (game.saveT >= 20) { game.saveT = 0; saveSuspend(); }
+      }
     } else if (game.state === "title") {
       updateMonster(dt);
       hunter.root.position.copy(P.pos);
@@ -1863,5 +2155,6 @@
     renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);
+  if (location.hash === "#debug") window.__hunt = { P, M, game };
 })();
 </script>
