@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>焔尾竜討伐</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -135,6 +136,12 @@
     position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px;
     border-radius: 50%; border: 2px solid rgba(239, 230, 214, 0.35);
     background: rgba(23, 19, 15, 0.25);
+    opacity: 0.55;
+  }
+  #joyBase.live { opacity: 1; }
+  #joyBase::after {
+    content: "移動"; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+    text-align: center; font: 700 11px/1 var(--body); color: rgba(239, 230, 214, 0.8);
   }
   #joyKnob {
     position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
@@ -999,62 +1006,117 @@
     }
   });
 
-  // タッチ
-  if (isTouch) {
+  // タッチ操作
+  // スマホではドラッグがスクロール操作として横取りされやすいので、
+  // タッチイベントを直接受けて preventDefault し、指は識別子で追いかける。
+  let touchReady = false;
+  function setupTouch() {
+    if (touchReady) return;
+    touchReady = true;
     $("touch").hidden = false;
+    $("ctlDesk").hidden = true;
+    $("ctlTouch").hidden = false;
+    $("hint").hidden = true;
     const joyBase = $("joyBase"), joyKnob = $("joyKnob"), J = input.joy;
     let look = null;
-    // 指の追跡は window 全体で行う（一時停止画面などが上に重なっても指を見失わない）
-    $("joyZone").addEventListener("pointerdown", (e) => {
-      if (game.state !== "play") return;
-      J.id = e.pointerId; J.cx = e.clientX; J.cy = e.clientY; J.active = true; J.x = J.y = 0;
-      joyBase.hidden = false;
-      joyBase.style.left = e.clientX + "px"; joyBase.style.top = e.clientY + "px";
+    const restJoy = () => {
+      joyBase.style.left = "86px";
+      joyBase.style.top = window.innerHeight - 150 + "px";
+      joyBase.classList.remove("live");
       joyKnob.style.transform = "";
-    });
-    $("lookZone").addEventListener("pointerdown", (e) => {
-      if (game.state !== "play") return;
-      look = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointermove", (e) => {
-      if (J.active && e.pointerId === J.id) {
-        let dx = (e.clientX - J.cx) / 50, dy = (e.clientY - J.cy) / 50;
-        const m = Math.hypot(dx, dy);
-        if (m > 1) { dx /= m; dy /= m; }
-        J.x = dx; J.y = -dy;
-        joyKnob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
-      } else if (look && e.pointerId === look.id) {
-        cam.yaw -= (e.clientX - look.x) * 0.006;
-        cam.idleT = 0;
-        cam.pitch = clamp(cam.pitch + (e.clientY - look.y) * 0.004, 0.05, 0.95);
-        look.x = e.clientX; look.y = e.clientY;
-      }
-    }, { passive: true });
-    const touchEnd = (e) => {
-      if (e.pointerId === J.id) { J.active = false; J.x = J.y = 0; J.id = null; joyBase.hidden = true; }
-      if (look && e.pointerId === look.id) look = null;
     };
-    window.addEventListener("pointerup", touchEnd);
-    window.addEventListener("pointercancel", touchEnd);
-    input.resetLook = () => { look = null; };
+    restJoy();
+    joyBase.hidden = false;
+    window.addEventListener("resize", () => { if (!J.active) restJoy(); });
+    const startJoy = (id, x, y) => {
+      J.id = id; J.cx = x; J.cy = y; J.active = true; J.x = J.y = 0;
+      joyBase.style.left = x + "px"; joyBase.style.top = y + "px";
+      joyBase.classList.add("live");
+      joyKnob.style.transform = "";
+    };
+    const moveJoy = (x, y) => {
+      let dx = (x - J.cx) / 50, dy = (y - J.cy) / 50;
+      const m = Math.hypot(dx, dy);
+      if (m > 1) { dx /= m; dy /= m; }
+      J.x = dx; J.y = -dy;
+      joyKnob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
+    };
+    const moveLook = (x, y) => {
+      cam.yaw -= (x - look.x) * 0.006;
+      cam.idleT = 0;
+      cam.pitch = clamp(cam.pitch + (y - look.y) * 0.004, 0.05, 0.95);
+      look.x = x; look.y = y;
+    };
+    const endId = (id) => {
+      if (J.active && id === J.id) { J.active = false; J.x = J.y = 0; J.id = null; restJoy(); }
+      if (look && id === look.id) look = null;
+    };
+    input.resetTouch = () => { J.active = false; J.x = J.y = 0; J.id = null; look = null; restJoy(); };
+    const hasTouchEvents = "ontouchstart" in window;
+    const NP = { passive: false };
+
+    if (hasTouchEvents) {
+      $("joyZone").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (game.state !== "play") return;
+        const t = e.changedTouches[0];
+        startJoy("t" + t.identifier, t.clientX, t.clientY);
+      }, NP);
+      $("lookZone").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (game.state !== "play") return;
+        const t = e.changedTouches[0];
+        look = { id: "t" + t.identifier, x: t.clientX, y: t.clientY };
+      }, NP);
+      window.addEventListener("touchmove", (e) => {
+        let used = false;
+        for (const t of e.changedTouches) {
+          const id = "t" + t.identifier;
+          if (J.active && id === J.id) { moveJoy(t.clientX, t.clientY); used = true; }
+          else if (look && id === look.id) { moveLook(t.clientX, t.clientY); used = true; }
+        }
+        if (used || game.state === "play") e.preventDefault();
+      }, NP);
+      const tEnd = (e) => { for (const t of e.changedTouches) endId("t" + t.identifier); };
+      window.addEventListener("touchend", tEnd);
+      window.addEventListener("touchcancel", tEnd);
+    } else {
+      // タッチイベントがない端末（ペン等）はポインターで同じことをする
+      $("joyZone").addEventListener("pointerdown", (e) => { if (game.state === "play") startJoy("p" + e.pointerId, e.clientX, e.clientY); });
+      $("lookZone").addEventListener("pointerdown", (e) => { if (game.state === "play") look = { id: "p" + e.pointerId, x: e.clientX, y: e.clientY }; });
+      window.addEventListener("pointermove", (e) => {
+        const id = "p" + e.pointerId;
+        if (J.active && id === J.id) moveJoy(e.clientX, e.clientY);
+        else if (look && id === look.id) moveLook(e.clientX, e.clientY);
+      });
+      window.addEventListener("pointerup", (e) => endId("p" + e.pointerId));
+      window.addEventListener("pointercancel", (e) => endId("p" + e.pointerId));
+    }
 
     document.querySelectorAll(".tb").forEach((b) => {
       const act = b.dataset.act;
-      b.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
+      const down = () => {
         b.classList.add("on");
         if (game.state !== "play") return;
         input.pressed.add(act);
         if (act === "strong") input.touchStrong = true;
-      });
+      };
       const up = () => { b.classList.remove("on"); if (act === "strong") input.touchStrong = false; };
-      b.addEventListener("pointerup", up);
-      b.addEventListener("pointercancel", up);
-      b.addEventListener("pointerleave", up);
+      if (hasTouchEvents) {
+        b.addEventListener("touchstart", (e) => { e.preventDefault(); down(); }, NP);
+        b.addEventListener("touchend", (e) => { e.preventDefault(); up(); }, NP);
+        b.addEventListener("touchcancel", up);
+      } else {
+        b.addEventListener("pointerdown", (e) => { e.preventDefault(); down(); });
+        b.addEventListener("pointerup", up);
+        b.addEventListener("pointercancel", up);
+        b.addEventListener("pointerleave", up);
+      }
     });
-    $("ctlDesk").hidden = true;
-    $("ctlTouch").hidden = false;
   }
+  if (isTouch) setupTouch();
+  // 判定をすり抜けた端末でも、最初に触れた時点でタッチ操作を出す
+  window.addEventListener("touchstart", setupTouch, { once: true, passive: true });
 
   // ================= カメラ =================
   const cam = { yaw: 0, pitch: 0.3, dist: 10, focusT: 0, focusYaw: 0, shake: 0, target: new V3(), idleT: 0 };
@@ -2025,8 +2087,7 @@
     input.keys.clear(); input.pressed.clear();
     input.mouseStrong = false; input.touchStrong = false;
     const J = input.joy; J.active = false; J.x = J.y = 0; J.id = null;
-    $("joyBase").hidden = true;
-    input.resetLook?.();
+    input.resetTouch?.();
     document.querySelectorAll(".tb.on").forEach((b) => b.classList.remove("on"));
   }
   function grabFocus() {
@@ -2038,7 +2099,7 @@
     game.saveT = 0;
     ["titleScreen", "resultScreen", "pauseScreen", "smithScreen"].forEach((id) => { $(id).hidden = true; });
     ui.hud.hidden = false;
-    $("hint").hidden = isTouch;
+    $("hint").hidden = isTouch || touchReady;
     hunter.root.visible = true;
     lastClock = "";
     updateUI(0);
