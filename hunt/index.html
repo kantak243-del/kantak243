@@ -253,6 +253,27 @@
   .quest-tabs button[data-q="xenogia"][aria-selected="true"] { background: #3a2a58; border-color: #3a2a58; }
   .quest-tabs button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
   .q-advice { margin: 0; font-size: 12px; font-weight: 700; color: var(--blood); }
+  .pane { display: flex; flex-direction: column; gap: 12px; }
+  .armor-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .armor-list li {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 10px 12px; border: 1px solid rgba(23, 19, 15, 0.3); border-radius: 3px;
+  }
+  .armor-list li.on { border: 2px solid var(--ink); background: rgba(23, 19, 15, 0.06); }
+  .armor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .armor-head b { font: 400 17px/1.2 var(--display); }
+  .armor-head span { font: 600 13px/1 var(--num); color: #7a4a22; white-space: nowrap; }
+  .armor-skills { margin: 0; font-size: 12px; color: #4a3a2c; line-height: 1.6; }
+  .armor-cost { margin: 0; font-size: 12px; color: #4a3a2c; line-height: 1.6; }
+  .armor-cost .short { color: var(--blood); font-weight: 700; }
+  .armor-list button {
+    align-self: flex-start;
+    appearance: none; cursor: pointer; border: 0; border-radius: 3px;
+    padding: 9px 16px; background: var(--ink); color: var(--paper);
+    font: 700 13px/1 var(--body);
+  }
+  .armor-list button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .armor-list button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
   .weapon-line b { color: var(--ink); }
   .btn small { display: block; margin-top: 6px; font: 400 12px/1 var(--body); letter-spacing: 0.04em; opacity: 0.8; }
   .btn.alt { background: #6b3a1c; }
@@ -353,7 +374,7 @@
       <div><small id="pfBestLabel">最速</small><b id="pfBest">--:--</b></div>
       <div><small>所持金</small><b id="pfZenny">0z</b></div>
     </div>
-    <p class="weapon-line">装備：<b id="pfWeapon">鉄刀</b>（攻撃力 <span id="pfAtk">100</span>）</p>
+    <p class="weapon-line">武器：<b id="pfWeapon">鉄刀</b>（攻撃力 <span id="pfAtk">100</span>）　防具：<b id="pfArmor">ハンター装備</b>（防御 <span id="pfDef">0</span>%）</p>
     <dl class="q-meta">
       <div><dt>目的</dt><dd id="qTarget">焔尾竜ヴァルグ 1頭の狩猟</dd></div>
       <div><dt>狩猟地</dt><dd id="qPlace">灰霧の谷</dd></div>
@@ -376,7 +397,7 @@
     <p id="loadErr" hidden>3D描画ライブラリを読み込めませんでした。通信状態を確認して再読み込みしてください。</p>
     <button class="btn alt" id="continueBtn" type="button" hidden>続きから<small id="continueInfo"></small></button>
     <button class="btn" id="startBtn" type="button">出発する</button>
-    <button class="btn-ghost" id="smithBtn" type="button">加工屋で武器を強化</button>
+    <button class="btn-ghost" id="smithBtn" type="button">加工屋（武器の強化・防具づくり）</button>
     <p class="save-note" id="saveNote">セーブ：このブラウザに自動保存</p>
   </div>
 </div>
@@ -405,18 +426,27 @@
     <ul class="rewards" id="rewards"></ul>
     <p class="save-note" id="resNote">報酬はアイテムボックスに入れて保存しました</p>
     <button class="btn" id="againBtn" type="button">もう一度挑む</button>
-    <button class="btn-ghost" id="toTitleBtn" type="button">タイトルへ（加工屋で強化する）</button>
+    <button class="btn-ghost" id="toTitleBtn" type="button">タイトルへ（加工屋で武器・防具をつくる）</button>
   </div>
 </div>
 
 <div class="overlay" id="smithScreen" hidden>
   <div class="quest">
-    <div class="q-head"><span class="q-rank">加工屋</span><span class="stamp">鍛冶</span></div>
-    <h2 id="smWeapon">鉄刀</h2>
-    <p class="weapon-line">攻撃力 <b id="smAtk">100</b>　・　所持金 <b id="smZenny">0z</b></p>
-    <h3 id="smNextHead">次の強化</h3>
-    <ul class="cost" id="smCost"></ul>
-    <button class="btn" id="upgradeBtn" type="button">強化する</button>
+    <div class="q-head"><span class="q-rank">加工屋 ・ 所持金 <b id="smZenny">0z</b></span><span class="stamp">鍛冶</span></div>
+    <div class="quest-tabs" role="tablist" aria-label="加工するもの">
+      <button type="button" role="tab" data-tab="weapon" aria-selected="true">武器</button>
+      <button type="button" role="tab" data-tab="armor" aria-selected="false">防具</button>
+    </div>
+    <div class="pane" id="smWeaponPane">
+      <h2 id="smWeapon">鉄刀</h2>
+      <p class="weapon-line">攻撃力 <b id="smAtk">100</b></p>
+      <h3 id="smNextHead">次の強化</h3>
+      <ul class="cost" id="smCost"></ul>
+      <button class="btn" id="upgradeBtn" type="button">強化する</button>
+    </div>
+    <div class="pane" id="smArmorPane" hidden>
+      <ul class="armor-list" id="armorList"></ul>
+    </div>
     <h3>アイテムボックス</h3>
     <ul class="rewards" id="itemBox"></ul>
     <button class="btn-ghost" id="smithBack" type="button">もどる</button>
@@ -831,7 +861,7 @@
     const legL = leg(1), legR = leg(-1);
     root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     scene.add(root);
-    return { root, body, torso, head, armR, armL, sword, bladeMat, swordTip, legL, legR };
+    return { root, body, torso, head, armR, armL, sword, bladeMat, swordTip, legL, legR, plate, cloth };
   }
   const hunter = buildHunter();
 
@@ -1060,7 +1090,7 @@
 
   function resetWorld() {
     Object.assign(P, {
-      pos: CAMP.clone(), yaw: Math.PI, hp: 150, maxHp: 150, hpLag: 150, st: 100, maxSt: 100, exhausted: false,
+      pos: CAMP.clone(), yaw: Math.PI, hp: 150 + armor().hp, maxHp: 150 + armor().hp, hpLag: 150 + armor().hp, st: 100, maxSt: 100, exhausted: false,
       potions: 5, carts: 0, state: "move", stateT: 0, action: null, hitDone: false, queued: false, swung: false,
       charge: 0, chargeLvl: 0, heavyLvl: 0, iframe: 0, kx: 0, kz: 0, dodgeX: 0, dodgeZ: -1, animPh: 0, moveSpeed: 0,
       sprinting: false, healLeft: 0,
@@ -1321,11 +1351,11 @@
   }
   function tryDodge(wx, wz, wm) {
     if (P.st < 12) return false;
-    P.st -= 22;
+    P.st -= 22 * (1 - (armor().stamina || 0));
     if (wm > 0.1) { P.dodgeX = wx; P.dodgeZ = wz; P.yaw = Math.atan2(wx, wz); }
     else { P.dodgeX = Math.sin(P.yaw); P.dodgeZ = Math.cos(P.yaw); }
     setPState("dodge");
-    P.iframe = Math.max(P.iframe, 0.36);
+    P.iframe = Math.max(P.iframe, 0.36 + (armor().dodge || 0));
     P.queued = false;
     return true;
   }
@@ -1447,7 +1477,7 @@
 
     // スタミナ
     if (P.sprinting) {
-      P.st -= 20 * dt;
+      P.st -= 20 * (1 - (armor().stamina || 0)) * dt;
       if (P.st <= 0) { P.st = 0; P.exhausted = true; }
     } else if (P.state !== "dodge") {
       P.st = Math.min(P.maxSt, P.st + 26 * dt);
@@ -1568,7 +1598,7 @@
     if (!best) return;
     P.hitDone = true;
     const base = P.action === "heavy" ? HEAVY_DMG[P.heavyLvl] : a.dmg;
-    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (0.9 + Math.random() * 0.2));
+    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (1 + (armor().atk || 0)) * (0.9 + Math.random() * 0.2));
     const at = tmpV2.copy(c).lerp(best.w, 0.6);
     damageMonster(dmg, best, at);
     const heavy = P.action === "heavy" || P.action === "s3";
@@ -1579,8 +1609,12 @@
     if (heavy) sfx.heavyHit(); else sfx.hit(best.mult >= 1.4);
   }
 
-  function hitPlayer(dmg, down, fromX, fromZ) {
+  // kind: "phys"（体当たり等） / "fire" / "thunder"。防具の防御と耐性で減らす
+  function hitPlayer(dmg, down, fromX, fromZ, kind = "phys") {
     if (P.iframe > 0 || P.state === "faint" || game.state !== "play") return false;
+    const A = armor();
+    const res = kind === "fire" ? (A.fireRes || 0) : kind === "thunder" ? (A.thunderRes || 0) : 0;
+    dmg = Math.max(1, Math.round(dmg * (1 - A.def) * (1 - res)));
     if (!TEST_MODE) P.hp -= dmg; // テスト版は無敵（のけぞりだけ起きる）
     const dx = P.pos.x - fromX, dz = P.pos.z - fromZ, d = Math.hypot(dx, dz) || 1;
     const kb = down ? 11 : 6;
@@ -1736,7 +1770,7 @@
         emit(p, 0xff7a2f, 40, 8, { life: 0.6, grav: 4 });
         emit(p, 0xffe0a0, 15, 5, { life: 0.4, grav: 2 });
         sfx.boom();
-        if (Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < 3.2) hitPlayer(Math.round(30 * SP.dmg), true, p.x - f.vx * 0.1, p.z - f.vz * 0.1);
+        if (Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < 3.2) hitPlayer(Math.round(30 * SP.dmg), true, p.x - f.vx * 0.1, p.z - f.vz * 0.1, "fire");
         cam.shake = Math.max(cam.shake, 0.25);
         scene.remove(f.mesh);
         f.mesh.geometry.dispose();
@@ -1806,7 +1840,7 @@
             if (h.kind === "bolt") sfx.thunder(); else { sfx.boom(); sfx.fire(); }
             cam.shake = Math.max(cam.shake, 0.35);
           }
-          if (Math.hypot(P.pos.x - h.x, P.pos.z - h.z) < h.r + 0.3) hitPlayer(Math.round(K.dmg * SP.dmg), true, h.x, h.z);
+          if (Math.hypot(P.pos.x - h.x, P.pos.z - h.z) < h.r + 0.3) hitPlayer(Math.round(K.dmg * SP.dmg), true, h.x, h.z, h.kind === "bolt" ? "thunder" : "fire");
         }
       } else {
         const k = (h.t - h.delay) / 0.3;
@@ -2241,12 +2275,33 @@
     { name: "天冥刀ゼノギア", atk: 320, cost: { xscale: 5, xshell: 3, xhorn: 2 }, z: 90000 },
     { name: "極星刃【天冥】", atk: 360, cost: { xorb: 1, xwing: 3, xtail: 1, acore: 1 }, z: 120000 },
   ];
-  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg" });
+  const ARMORS = [
+    { id: "hunter", name: "ハンター装備", def: 0, hp: 0, skills: ["なし"], color: { plate: 0xb9ae98, cloth: 0xd2552a } },
+    { id: "valg", name: "焔尾装備", def: 0.15, hp: 0, fireRes: 0.3, skills: ["火耐性（火のダメージ-30%）"],
+      cost: { scale: 4, shell: 2, fang: 1 }, z: 4000, color: { plate: 0x9a4a2a, cloth: 0xffa040 } },
+    { id: "zelga", name: "蒼雷装備", def: 0.25, hp: 0, thunderRes: 0.3, dodge: 0.15, skills: ["雷耐性（雷のダメージ-30%）", "回避性能（回避の無敵が長い）"],
+      cost: { zscale: 4, zshell: 2, zhorn: 1 }, z: 15000, color: { plate: 0x3a5a8a, cloth: 0x6fd0ff } },
+    { id: "agniva", name: "獄炎装備", def: 0.35, hp: 50, fireRes: 0.4, skills: ["体力+50", "火耐性・大（火のダメージ-40%）"],
+      cost: { ascale: 4, ashell: 3, ahorn: 1, awing: 1 }, z: 40000, color: { plate: 0x3a2622, cloth: 0xff3a10 } },
+    { id: "xenogia", name: "天冥装備", def: 0.45, hp: 30, atk: 0.1, stamina: 0.4, fireRes: 0.2, thunderRes: 0.2,
+      skills: ["攻撃+10%", "スタミナ消費-40%", "体力+30", "火・雷耐性（-20%）"],
+      cost: { xscale: 5, xshell: 3, xwing: 2, xorb: 1 }, z: 100000, color: { plate: 0xd8c07a, cloth: 0xb07cff } },
+  ];
+  const armor = () => ARMORS.find((a) => a.id === save.armor) || ARMORS[0];
+  function applyArmorLook() {
+    const c = armor().color;
+    hunter.plate.color.setHex(c.plate).convertSRGBToLinear();
+    hunter.cloth.color.setHex(c.cloth).convertSRGBToLinear();
+  }
+  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg", armor: "hunter", armors: ["hunter"] });
   const normalizeSave = (s) => {
     const o = Object.assign(defaultSave(), s);
     o.best = Object.assign({}, o.best || {});
     if (o.bestTime != null && o.best.valg == null) o.best.valg = o.bestTime; // 旧データの最速タイム
     if (!SPECIES[o.quest]) o.quest = "valg";
+    o.armors = Array.isArray(o.armors) ? o.armors.slice() : ["hunter"];
+    if (!o.armors.includes("hunter")) o.armors.unshift("hunter");
+    if (!o.armors.includes(o.armor)) o.armor = "hunter";
     return o;
   };
   let save = defaultSave();
@@ -2310,6 +2365,7 @@
         if (game.state === "title") {
           save = normalizeSave(JSON.parse(JSON.stringify(remote)));
           writeLocal();
+          applyArmorLook();
           selectQuest(save.quest);
         }
       } else if (save.updatedAt > 0) {
@@ -2341,7 +2397,7 @@
     setSpecies(s.sp || "valg");
     resetWorld();
     game.time = s.time;
-    Object.assign(P, { hp: s.p.hp, hpLag: s.p.hp, st: s.p.st, potions: s.p.potions, carts: s.p.carts, yaw: s.p.yaw });
+    Object.assign(P, { hp: Math.min(s.p.hp, P.maxHp), hpLag: Math.min(s.p.hp, P.maxHp), st: s.p.st, potions: s.p.potions, carts: s.p.carts, yaw: s.p.yaw });
     P.pos.set(s.p.x, 0, s.p.z);
     Object.assign(M, s.m);
     M.pos = new V3(s.m.x, 0, s.m.z);
@@ -2357,7 +2413,7 @@
 
   function renderTitle() {
     const q = SPECIES[save.quest] || SPECIES.valg;
-    document.querySelectorAll(".quest-tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.q === q.id)));
+    document.querySelectorAll(".quest-tabs button[data-q]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.q === q.id)));
     $("qRank").textContent = `${q.rank} 狩猟クエスト`;
     $("qTitle").textContent = q.quest;
     $("qTarget").textContent = `${q.full} 1頭の狩猟`;
@@ -2372,6 +2428,8 @@
     $("pfZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
     $("pfWeapon").textContent = weapon().name;
     $("pfAtk").textContent = weapon().atk;
+    $("pfArmor").textContent = armor().name;
+    $("pfDef").textContent = Math.round(armor().def * 100);
     const s = save.suspend;
     $("continueBtn").hidden = !s;
     if (s) {
@@ -2410,6 +2468,7 @@
     }
     $("upgradeBtn").disabled = !ok;
     $("upgradeBtn").hidden = !next;
+    renderArmors();
     const box = $("itemBox");
     box.innerHTML = "";
     const owned = Object.keys(MATS).filter((k) => save.items[k] > 0);
@@ -2426,6 +2485,65 @@
       li.lastChild.textContent = "×" + save.items[k];
       box.appendChild(li);
     }
+  }
+  const hasCost = (a) => save.zenny >= a.z && Object.entries(a.cost).every(([k, n]) => (save.items[k] || 0) >= n);
+  function renderArmors() {
+    const list = $("armorList");
+    list.innerHTML = "";
+    for (const a of ARMORS) {
+      const owned = save.armors.includes(a.id), on = save.armor === a.id;
+      const li = document.createElement("li");
+      if (on) li.className = "on";
+      const head = document.createElement("div"); head.className = "armor-head";
+      const nm = document.createElement("b"); nm.textContent = a.name;
+      const st = document.createElement("span"); st.textContent = `防御 ${Math.round(a.def * 100)}%`;
+      head.append(nm, st);
+      const sk = document.createElement("p"); sk.className = "armor-skills"; sk.textContent = "スキル：" + a.skills.join("、");
+      li.append(head, sk);
+      if (!owned) {
+        const cost = document.createElement("p"); cost.className = "armor-cost";
+        const rows = Object.entries(a.cost).map(([k, n]) => [MATS[k], save.items[k] || 0, n]);
+        rows.push(["所持金", save.zenny, a.z]);
+        rows.forEach(([name, have, need], i) => {
+          const span = document.createElement("span");
+          if (have < need) span.className = "short";
+          span.textContent = name === "所持金"
+            ? `${name} ${have.toLocaleString("ja-JP")}/${need.toLocaleString("ja-JP")}z`
+            : `${name} ${have}/${need}`;
+          cost.append(span);
+          if (i < rows.length - 1) cost.append("　");
+        });
+        li.append(cost);
+      }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      if (on) { btn.textContent = "装備中"; btn.disabled = true; }
+      else if (owned) { btn.textContent = "装備する"; btn.addEventListener("click", () => equipArmor(a.id)); }
+      else { btn.textContent = "作る"; btn.disabled = !hasCost(a); btn.addEventListener("click", () => craftArmor(a.id)); }
+      li.append(btn);
+      list.append(li);
+    }
+  }
+  function craftArmor(id) {
+    const a = ARMORS.find((x) => x.id === id);
+    if (!a || save.armors.includes(id) || !hasCost(a)) return;
+    for (const [k, n] of Object.entries(a.cost)) save.items[k] -= n;
+    save.zenny -= a.z;
+    save.armors.push(id);
+    save.armor = id;
+    applyArmorLook();
+    persist(`${a.name}を作って装備しました`);
+    sfx.clear();
+    renderSmith();
+    renderTitle();
+  }
+  function equipArmor(id) {
+    if (!save.armors.includes(id)) return;
+    save.armor = id;
+    applyArmorLook();
+    persist(`${armor().name}を装備しました`);
+    renderSmith();
+    renderTitle();
   }
   function upgrade() {
     const next = WEAPONS[save.weaponLv];
@@ -2585,10 +2703,17 @@
   $("smithBtn").addEventListener("click", () => { renderSmith(); $("titleScreen").hidden = true; $("smithScreen").hidden = false; });
   $("smithBack").addEventListener("click", () => { $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle(); });
   $("upgradeBtn").addEventListener("click", upgrade);
-  document.querySelectorAll(".quest-tabs button").forEach((b) => b.addEventListener("click", () => { selectQuest(b.dataset.q); persist(); }));
+  document.querySelectorAll(".quest-tabs button[data-q]").forEach((b) => b.addEventListener("click", () => { selectQuest(b.dataset.q); persist(); }));
+  document.querySelectorAll(".quest-tabs button[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    const tab = b.dataset.tab;
+    document.querySelectorAll(".quest-tabs button[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    $("smWeaponPane").hidden = tab !== "weapon";
+    $("smArmorPane").hidden = tab !== "armor";
+  }));
   $("focusGuard").addEventListener("click", () => { resetInput(); grabFocus(); $("focusGuard").hidden = true; });
   window.addEventListener("pagehide", () => { if (game.state === "play" || game.state === "pause") { save.suspend = snapshotQuest(); save.updatedAt = Date.now(); writeLocal(); } });
   $("testBadge").hidden = !TEST_MODE;
+  applyArmorLook();
   setSpecies(save.quest);
   resetWorld();
   renderTitle();
