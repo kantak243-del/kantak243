@@ -438,7 +438,7 @@
     <ul class="rewards" id="rewards"></ul>
     <p class="save-note" id="resNote">報酬はアイテムボックスに入れて保存しました</p>
     <button class="btn" id="againBtn" type="button">もう一度挑む</button>
-    <button class="btn-ghost" id="toTitleBtn" type="button">タイトルへ（加工屋で武器・防具をつくる）</button>
+    <button class="btn-ghost" id="toTitleBtn" type="button">タイトル・加工屋へ</button>
   </div>
 </div>
 
@@ -2787,43 +2787,57 @@
     $("resCarts").textContent = `${P.carts} 回`;
     const list = $("rewards");
     list.innerHTML = "";
-    $("rewardHead").hidden = !success;
-    $("resHrRow").hidden = !success;
+    $("rewardHead").hidden = false;
+    $("resHrRow").hidden = false;
     save.hunts++;
     save.suspend = null;
-    if (success) {
-      const got = {};
-      for (let i = 0; i < 5; i++) {
+    // 素材を n 個ランダムに選ぶ
+    const got = {};
+    const drawDrops = (n) => {
+      for (let i = 0; i < n; i++) {
         const k = SP.drops[(Math.random() * SP.drops.length) | 0];
         got[k] = (got[k] || 0) + 1;
       }
+    };
+    let zenny, hrGain;
+    if (success) {
+      drawDrops(5);
       if (M.tailCut) got[SP.tailItem] = (got[SP.tailItem] || 0) + 1;
       if (Math.random() < (M.tailCut ? 0.12 : 0.08)) got[SP.orb] = 1;
-      for (const [k, n] of Object.entries(got)) {
-        save.items[k] = (save.items[k] || 0) + n;
-        const li = document.createElement("li");
-        if (RARE.has(k)) li.className = "rare";
-        li.innerHTML = "<span></span><b></b>";
-        li.firstChild.textContent = MATS[k];
-        li.lastChild.textContent = "×" + n;
-        list.appendChild(li);
-      }
-      const li = document.createElement("li");
-      li.innerHTML = "<span>報酬金</span><b></b>";
-      li.lastChild.textContent = SP.reward.toLocaleString("ja-JP") + "z";
-      list.appendChild(li);
-      const hrGain = SP.hrp + (M.tailCut ? 50 : 0) + (P.carts === 0 ? 50 : 0);
-      const beforeHr = hrOf();
-      save.hrp += hrGain;
-      save.zenny += SP.reward;
+      zenny = SP.reward;
+      hrGain = SP.hrp + (M.tailCut ? 50 : 0) + (P.carts === 0 ? 50 : 0);
       save.clears++;
       if (save.best[SP.id] == null || time < save.best[SP.id]) save.best[SP.id] = time;
-      $("resHr").textContent = `+${hrGain}` + (hrOf() > beforeHr ? `（HR ${hrOf()} に上がった！）` : "");
+      $("rewardHead").textContent = "報酬";
       $("resNote").textContent = "報酬はアイテムボックスに入れて保存しました";
     } else {
+      // 失敗しても、与えた傷の割合に応じて少しもらえる（最低1個）
+      const ratio = clamp(M.totalDmg / M.maxHp, 0, 1);
+      drawDrops(1 + Math.round(ratio * 3));
+      if (M.tailCut) got[SP.tailItem] = (got[SP.tailItem] || 0) + 1;
+      zenny = Math.round((SP.reward * (0.1 + 0.3 * ratio)) / 100) * 100;
+      hrGain = Math.round(SP.hrp * (0.1 + 0.3 * ratio));
       sfx.fail();
-      $("resNote").textContent = "記録を保存しました";
+      $("rewardHead").textContent = `残念賞（竜の体力を ${Math.round(ratio * 100)}% 削った分）`;
+      $("resNote").textContent = "もらった素材はアイテムボックスに入れて保存しました";
     }
+    for (const [k, n] of Object.entries(got)) {
+      save.items[k] = (save.items[k] || 0) + n;
+      const li = document.createElement("li");
+      if (RARE.has(k)) li.className = "rare";
+      li.innerHTML = "<span></span><b></b>";
+      li.firstChild.textContent = MATS[k];
+      li.lastChild.textContent = "×" + n;
+      list.appendChild(li);
+    }
+    const zli = document.createElement("li");
+    zli.innerHTML = "<span>報酬金</span><b></b>";
+    zli.lastChild.textContent = zenny.toLocaleString("ja-JP") + "z";
+    list.appendChild(zli);
+    const beforeHr = hrOf();
+    save.hrp += hrGain;
+    save.zenny += zenny;
+    $("resHr").textContent = `+${hrGain}` + (hrOf() > beforeHr ? `（HR ${hrOf()} に上がった！）` : "");
     persist();
     $("resultScreen").hidden = false;
     $("againBtn").focus();
