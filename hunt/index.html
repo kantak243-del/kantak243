@@ -254,6 +254,15 @@
   .quest-tabs button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
   .q-advice { margin: 0; font-size: 12px; font-weight: 700; color: var(--blood); }
   .pane { display: flex; flex-direction: column; gap: 12px; }
+  .wtypes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .wtypes button {
+    appearance: none; cursor: pointer; padding: 10px 2px; border-radius: 3px;
+    border: 1px solid rgba(23, 19, 15, 0.35); background: transparent; color: var(--ink);
+    font: 700 13px/1 var(--body); white-space: nowrap;
+  }
+  .wtypes button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .wtypes button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  @media (max-width: 400px) { .wtypes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .armor-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
   .armor-list li {
     display: flex; flex-direction: column; gap: 6px;
@@ -351,7 +360,7 @@
   <div class="bar" aria-label="竜の体力"><i id="mhpFill"></i></div>
 </div>
 <div class="hint" id="hint" hidden>
-  WASD/矢印キー 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック長押し/K 溜め斬り<br>
+  WASD/矢印キー 移動 ・ Shift ダッシュ ・ クリック/J 攻撃 ・ 右クリック/K <span id="hintStrong">溜め</span><br>
   Space 回避 ・ R 回復薬 ・ Q 注目 ・ マウス カメラ ・ P 一時停止
 </div>
 <div id="hurtFx"></div>
@@ -398,14 +407,14 @@
     <div class="controls" id="ctlDesk">
       <span><kbd>WASD</kbd><kbd>↑↓←→</kbd>移動</span>
       <span><kbd>Shift</kbd>ダッシュ</span>
-      <span><kbd>クリック</kbd><kbd>J</kbd>3連斬り</span>
-      <span><kbd>右長押し</kbd><kbd>K</kbd>溜め斬り</span>
+      <span><kbd>クリック</kbd><kbd>J</kbd>攻撃</span>
+      <span><kbd>右クリック</kbd><kbd>K</kbd>強攻撃（武器ごと）</span>
       <span><kbd>Space</kbd>回避（無敵）</span>
       <span><kbd>R</kbd>回復薬</span>
       <span><kbd>Q</kbd>竜の方を向く</span>
       <span><kbd>マウス</kbd>カメラ</span>
     </div>
-    <p class="q-note" id="ctlTouch" hidden>左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で3連斬り、「溜め」は長押しして離す。「回避」中は無敵。</p>
+    <p class="q-note" id="ctlTouch" hidden>左側をなぞって移動（端まで倒すとダッシュ）、右側をなぞってカメラ。「攻撃」連打で連続攻撃。右下の強攻撃ボタン（武器によって「溜め」「剣舞」「溜め撃ち」）は長押しして離す。「回避」中は無敵。</p>
     <p id="loadErr" hidden>3D描画ライブラリを読み込めませんでした。通信状態を確認して再読み込みしてください。</p>
     <button class="btn alt" id="continueBtn" type="button" hidden>続きから<small id="continueInfo"></small></button>
     <button class="btn" id="startBtn" type="button">出発する</button>
@@ -450,6 +459,9 @@
       <button type="button" role="tab" data-tab="armor" aria-selected="false">防具</button>
     </div>
     <div class="pane" id="smWeaponPane">
+      <div class="wtypes" id="wtypes" role="group" aria-label="武器の種類"></div>
+      <p class="q-note" id="wtypeDesc"></p>
+      <p class="save-note">強化段階は全部の武器で共通です</p>
       <h2 id="smWeapon">鉄刀</h2>
       <p class="weapon-line">攻撃力 <b id="smAtk">100</b></p>
       <h3 id="smNextHead">次の強化</h3>
@@ -821,6 +833,9 @@
     clear() { [523, 659, 784, 1047].forEach((f, i) => osc("triangle", f, null, 0.4, 0.12, i * 0.14)); },
     fail() { [392, 330, 262].forEach((f, i) => osc("triangle", f, null, 0.5, 0.12, i * 0.2)); },
     cut() { noise(0.3, 0.4, 3000, 400); osc("square", 180, 60, 0.3, 0.1); },
+    bow() { noise(0.08, 0.2, 3500, 1800); osc("triangle", 180, 90, 0.08, 0.06); },
+    guard() { osc("square", 1200, 700, 0.12, 0.08); noise(0.15, 0.3, 4000, 1500); },
+    stun() { [880, 1100, 1320].forEach((f, i) => osc("triangle", f, null, 0.2, 0.07, i * 0.08)); },
     thunder() { noise(0.12, 0.5, 6000, 2000, "highpass"); noise(0.9, 0.45, 600, 50, "lowpass", 0.05); osc("sawtooth", 70, 35, 0.8, 0.12); },
   };
 
@@ -854,15 +869,50 @@
       return g;
     }
     const armR = arm(-1), armL = arm(1);
-    // 太刀（刃は腕の延長線 -y 方向）
+    // 武器は右手（sword）と左手（lhand）に付ける。刃は腕の延長線 -y 方向
     const sword = new THREE.Group(); sword.position.set(0, -0.62, 0); armR.add(sword);
+    const lhand = new THREE.Group(); lhand.position.set(0, -0.62, 0); armL.add(lhand);
     const bladeMat = mat(0xd4d8da, { metalness: 0.85, roughness: 0.25, emissive: new THREE.Color(0x000000) });
-    sword.add(mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), leather, 0, 0.05, 0));
-    sword.add(mesh(new THREE.BoxGeometry(0.3, 0.05, 0.12), plate, 0, -0.1, 0));
-    sword.add(mesh(new THREE.BoxGeometry(0.05, 1.55, 0.17), bladeMat, 0, -0.9, 0));
+    const wood = mat(0x6a4a2a);
+    const W = {};
+    const grp = (parent) => { const g = new THREE.Group(); parent.add(g); return g; };
+    // 太刀
+    W.katana = grp(sword);
+    W.katana.add(mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), leather, 0, 0.05, 0));
+    W.katana.add(mesh(new THREE.BoxGeometry(0.3, 0.05, 0.12), plate, 0, -0.1, 0));
+    W.katana.add(mesh(new THREE.BoxGeometry(0.05, 1.55, 0.17), bladeMat, 0, -0.9, 0));
     const tip = mesh(new THREE.ConeGeometry(0.09, 0.3, 4), bladeMat, 0, -1.8, 0);
     tip.rotation.x = Math.PI;
-    sword.add(tip);
+    W.katana.add(tip);
+    // 大剣: 幅広く厚い刃
+    W.great = grp(sword);
+    W.great.add(mesh(new THREE.BoxGeometry(0.09, 0.45, 0.09), leather, 0, 0.1, 0));
+    W.great.add(mesh(new THREE.BoxGeometry(0.55, 0.1, 0.18), plate, 0, -0.15, 0));
+    W.great.add(mesh(new THREE.BoxGeometry(0.1, 2.1, 0.46), bladeMat, 0, -1.25, 0));
+    const gtip = mesh(new THREE.ConeGeometry(0.33, 0.35, 4), bladeMat, 0, -2.45, 0); gtip.rotation.set(Math.PI, Math.PI / 4, 0); gtip.scale.z = 0.3;
+    W.great.add(gtip);
+    // 双剣: 左右に短い刃
+    W.dual = grp(sword);
+    W.dualL = grp(lhand);
+    for (const g of [W.dual, W.dualL]) {
+      g.add(mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), leather, 0, 0.03, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.04, 0.95, 0.14), bladeMat, 0, -0.55, 0));
+      const t2 = mesh(new THREE.ConeGeometry(0.07, 0.22, 4), bladeMat, 0, -1.12, 0); t2.rotation.x = Math.PI; g.add(t2);
+    }
+    // ハンマー: 長い柄と重い頭
+    W.hammer = grp(sword);
+    W.hammer.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.5, 6), wood, 0, -0.6, 0));
+    W.hammer.add(mesh(new THREE.BoxGeometry(0.75, 0.5, 0.5), bladeMat, 0, -1.45, 0));
+    W.hammer.add(mesh(new THREE.BoxGeometry(0.85, 0.56, 0.12), plate, 0, -1.45, 0));
+    // 弓: 左手に持つ。腕を前に出すと上下にのびる
+    W.bow = grp(lhand);
+    for (const sgn of [1, -1]) {
+      const limb = mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.9, 5), wood, 0, -0.18, sgn * 0.42);
+      limb.rotation.x = Math.PI / 2 + sgn * -0.35;
+      W.bow.add(limb);
+    }
+    W.bow.add(mesh(new THREE.BoxGeometry(0.02, 0.02, 1.55), bladeMat, 0, 0.05, 0));
+    W.bow.add(mesh(new THREE.BoxGeometry(0.08, 0.1, 0.16), leather, 0, -0.02, 0));
     const swordTip = new THREE.Object3D(); swordTip.position.y = -1.7; sword.add(swordTip);
     function leg(side) {
       const g = new THREE.Group(); g.position.set(side * 0.16, 0, 0); body.add(g);
@@ -873,7 +923,7 @@
     const legL = leg(1), legR = leg(-1);
     root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     scene.add(root);
-    return { root, body, torso, head, armR, armL, sword, bladeMat, swordTip, legL, legR, plate, cloth };
+    return { root, body, torso, head, armR, armL, sword, lhand, weapons: W, bladeMat, swordTip, legL, legR, plate, cloth };
   }
   const hunter = buildHunter();
 
@@ -1105,7 +1155,7 @@
       pos: CAMP.clone(), yaw: Math.PI, hp: 150 + gear().hp, maxHp: 150 + gear().hp, hpLag: 150 + gear().hp, st: 100, maxSt: 100, exhausted: false,
       potions: 5, carts: 0, state: "move", stateT: 0, action: null, hitDone: false, queued: false, swung: false,
       charge: 0, chargeLvl: 0, heavyLvl: 0, iframe: 0, kx: 0, kz: 0, dodgeX: 0, dodgeZ: -1, animPh: 0, moveSpeed: 0,
-      sprinting: false, healLeft: 0,
+      sprinting: false, healLeft: 0, dance: false, hitMask: 0, swungMask: 0,
     });
     Object.assign(M, {
       pos: new V3(0, 0, -12), yaw: 0.3, hp: SP.hp, maxHp: SP.hp, state: "idle", stateT: 0, t: 0,
@@ -1113,12 +1163,13 @@
       flinchAcc: 0, flinchTh: SP.flinch, tailHp: SP.tailHp, tailCut: false, air: 0, comboLeft: 0, jump: null, landed: false,
       awake: false, pendingAwake: false, awakeRoar: false, atkCd: 1.5, hitDone: false, moveSpeed: 0, walkPh: 0,
       wander: null, wanderWait: 0, spinBase: 0, chargeDist: 0, fired: false, roared: false, totalDmg: 0,
-      stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false,
+      stepTimer: 0, flameT: 0, deadAt: 0, enrageRoar: false, stunAcc: 0, stunTh: 350 * SP.size,
       pose: { neckX: -0.15, neckY: 0, jaw: 0.05, tiltZ: 0, tiltX: 0, tiltY: 0, legOut: 0, tailCurl: 0, wing: 0 },
     });
     mon.tailSegs[3].visible = true;
     mon.tilt.rotation.set(0, 0, 0); mon.tilt.position.set(0, 0, 0);
     clearHazards();
+    clearArrows();
     if (droppedTail) { scene.remove(droppedTail.obj); droppedTail = null; }
     setEnragedLook(false);
     game.time = 0; game.hitStop = 0;
@@ -1333,17 +1384,70 @@
   }
 
   // ================= ハンターの動き =================
-  const ATTACKS = {
-    s1: { dur: 0.52, hit: [0.17, 0.3], dmg: 26, reach: 2.3, rad: 1.6, y: 1.3, step: 2.2, next: "s2",
-      keys: [[0, -1.3, -1.5], [0.3, -1.45, -1.9], [0.58, -1.5, 1.5], [1, -0.9, 0.7]] },
-    s2: { dur: 0.56, hit: [0.19, 0.32], dmg: 30, reach: 2.3, rad: 1.6, y: 1.3, step: 2.2, next: "s3",
-      keys: [[0, -1.3, 1.4], [0.32, -1.45, 1.9], [0.6, -1.5, -1.5], [1, -0.9, -0.5]] },
-    s3: { dur: 0.9, hit: [0.36, 0.5], dmg: 52, reach: 2.7, rad: 1.9, y: 1.5, step: 3.2, next: null,
-      keys: [[0, -0.6, 0], [0.38, -3.0, 0.1], [0.56, -1.15, 0], [1, -0.8, 0]] },
-    heavy: { dur: 0.85, hit: [0.22, 0.38], dmg: 0, reach: 2.9, rad: 2.1, y: 1.5, step: 1.5, next: null,
-      keys: [[0, -2.8, 0.1], [0.24, -2.95, 0.1], [0.45, -1.0, 0], [1, -0.75, 0]] },
+  // ================= 武器の種類 =================
+  // chargeLv: 溜め段階に届く秒数 / heavyDmg: 溜め段階0〜3の威力 / moveMul: 移動の速さ
+  const WTYPES = {
+    katana: { id: "katana", name: "太刀", strongLabel: "溜め", combo: "s1", heavy: "heavy", moveMul: 1,
+      chargeLv: [0.4, 0.85, 1.35], heavyDmg: [55, 90, 135, 185],
+      desc: "バランス型。攻撃の連打で3連斬り、強攻撃を長押しして離すと溜め斬り（3段階）。" },
+    great: { id: "great", name: "大剣", strongLabel: "溜め", combo: "g1", heavy: "gheavy", moveMul: 0.82, guard: true,
+      chargeLv: [0.6, 1.2, 1.8], heavyDmg: [80, 130, 190, 270],
+      desc: "一撃が重く、動きは遅い。溜め斬りは3段階目でとても強力。溜めている間は正面からの攻撃を刃で受け止める（ガード）。" },
+    dual: { id: "dual", name: "双剣", strongLabel: "剣舞", combo: "d1", moveMul: 1.1,
+      desc: "手数で攻める。強攻撃で「剣舞」になり、スタミナを使い続ける代わりに攻撃が速く強くなる。剣舞中の強攻撃は回転斬り「乱舞」。" },
+    bow: { id: "bow", name: "弓", strongLabel: "溜め撃ち", moveMul: 1,
+      chargeLv: [0.35, 0.8, 1.3], arrows: [1, 2, 3, 4], arrowDmg: [15, 18, 20, 22],
+      desc: "離れて戦う。攻撃で速射、強攻撃を長押しして離すと溜め撃ち（最大4本）。溜め中はゆっくり歩ける。竜の方へ自動で狙う。" },
+    hammer: { id: "hammer", name: "ハンマー", strongLabel: "溜め", combo: "h1", heavy: "hheavy", moveMul: 0.95, impact: true,
+      chargeLv: [0.5, 1.0, 1.5], heavyDmg: [55, 85, 125, 170],
+      desc: "頭を叩き続けると竜が気絶する。溜めて離すと下からの振り上げで、頭に当てやすい。" },
   };
-  const HEAVY_DMG = [55, 90, 135, 185];
+  const WT = () => WTYPES[save.wtype] || WTYPES.katana;
+
+  // 攻撃ごとの動き。keys = [進み具合, 右腕の前後, 右腕の左右]、lkeys があれば左腕を別に動かす
+  // hits = 当たりが出る時間帯（秒）。dmg はその1回ごとの威力
+  const ATTACKS = {
+    s1: { dur: 0.52, hits: [[0.17, 0.3]], dmg: 26, reach: 2.3, rad: 1.6, y: 1.3, step: 2.2, next: "s2",
+      keys: [[0, -1.3, -1.5], [0.3, -1.45, -1.9], [0.58, -1.5, 1.5], [1, -0.9, 0.7]] },
+    s2: { dur: 0.56, hits: [[0.19, 0.32]], dmg: 30, reach: 2.3, rad: 1.6, y: 1.3, step: 2.2, next: "s3",
+      keys: [[0, -1.3, 1.4], [0.32, -1.45, 1.9], [0.6, -1.5, -1.5], [1, -0.9, -0.5]] },
+    s3: { dur: 0.9, hits: [[0.36, 0.5]], dmg: 52, reach: 2.7, rad: 1.9, y: 1.5, step: 3.2, next: null, big: true,
+      keys: [[0, -0.6, 0], [0.38, -3.0, 0.1], [0.56, -1.15, 0], [1, -0.8, 0]] },
+    heavy: { dur: 0.85, hits: [[0.22, 0.38]], reach: 2.9, rad: 2.1, y: 1.5, step: 1.5, next: null, charged: true,
+      keys: [[0, -2.8, 0.1], [0.24, -2.95, 0.1], [0.45, -1.0, 0], [1, -0.75, 0]] },
+    // 大剣
+    g1: { dur: 1.0, hits: [[0.47, 0.6]], dmg: 62, reach: 3.0, rad: 2.1, y: 1.4, step: 1.2, next: "g2", big: true, noCancel: true,
+      keys: [[0, -0.8, 0], [0.45, -3.0, 0], [0.62, -1.0, 0], [1, -0.7, 0]] },
+    g2: { dur: 1.0, hits: [[0.45, 0.62]], dmg: 58, reach: 3.0, rad: 2.3, y: 1.3, step: 1.0, next: "g1", big: true, noCancel: true,
+      keys: [[0, -1.4, -1.8], [0.4, -1.5, -2.1], [0.66, -1.5, 1.6], [1, -0.9, 0.8]] },
+    gheavy: { dur: 1.0, hits: [[0.24, 0.42]], reach: 3.1, rad: 2.3, y: 1.5, step: 1.2, next: null, charged: true,
+      keys: [[0, -2.9, 0], [0.24, -3.0, 0], [0.46, -0.9, 0], [1, -0.7, 0]] },
+    // 双剣（左右の腕を交互に）
+    d1: { dur: 0.34, hits: [[0.1, 0.2]], dmg: 17, reach: 2.0, rad: 1.5, y: 1.2, step: 1.4, next: "d2", dual: true,
+      keys: [[0, -1.3, -1.6], [0.25, -1.4, -1.8], [0.6, -1.5, 1.2], [1, -1.0, 0.6]],
+      lkeys: [[0, -0.6, 0.2], [1, -0.7, 0.3]] },
+    d2: { dur: 0.34, hits: [[0.1, 0.2]], dmg: 18, reach: 2.0, rad: 1.5, y: 1.2, step: 1.4, next: "d3", dual: true,
+      keys: [[0, -0.6, -0.2], [1, -0.7, -0.3]],
+      lkeys: [[0, -1.3, 1.6], [0.25, -1.4, 1.8], [0.6, -1.5, -1.2], [1, -1.0, -0.6]] },
+    d3: { dur: 0.4, hits: [[0.1, 0.18], [0.22, 0.3]], dmg: 11, reach: 2.0, rad: 1.6, y: 1.2, step: 1.6, next: "d4", dual: true,
+      keys: [[0, -1.5, -1.4], [0.45, -1.5, 1.4], [1, -1.5, -1.4]],
+      lkeys: [[0, -1.5, 1.4], [0.45, -1.5, -1.4], [1, -1.5, 1.4]] },
+    d4: { dur: 0.52, hits: [[0.2, 0.32]], dmg: 27, reach: 2.2, rad: 1.7, y: 1.4, step: 2.0, next: null, dual: true, big: true,
+      keys: [[0, -0.7, 0.2], [0.35, -2.9, 0.3], [0.6, -1.1, 0.2], [1, -0.9, 0.2]],
+      lkeys: [[0, -0.7, -0.2], [0.35, -2.9, -0.3], [0.6, -1.1, -0.2], [1, -0.9, -0.2]] },
+    dspin: { dur: 1.25, hits: [[0.15, 0.22], [0.33, 0.4], [0.51, 0.58], [0.69, 0.76], [0.87, 0.94], [1.02, 1.1]], dmg: 14,
+      reach: 0, rad: 2.9, y: 1.3, step: 2.5, next: null, dual: true, spin: 13,
+      keys: [[0, -1.57, -1.5], [1, -1.57, -1.5]], lkeys: [[0, -1.57, 1.5], [1, -1.57, 1.5]] },
+    // ハンマー
+    h1: { dur: 0.62, hits: [[0.24, 0.36]], dmg: 30, reach: 2.3, rad: 1.7, y: 1.4, step: 1.8, next: "h2",
+      keys: [[0, -1.2, -1.6], [0.3, -1.4, -1.9], [0.6, -1.5, 1.3], [1, -0.9, 0.6]] },
+    h2: { dur: 0.62, hits: [[0.24, 0.36]], dmg: 34, reach: 2.3, rad: 1.7, y: 1.4, step: 1.8, next: "h3",
+      keys: [[0, -1.2, 1.5], [0.32, -1.4, 1.9], [0.6, -1.5, -1.3], [1, -0.9, -0.5]] },
+    h3: { dur: 0.95, hits: [[0.4, 0.52]], dmg: 54, reach: 2.5, rad: 1.9, y: 1.2, step: 2.6, next: null, big: true,
+      keys: [[0, -0.6, 0], [0.4, -3.0, 0], [0.55, -0.9, 0], [1, -0.6, 0]] },
+    hheavy: { dur: 0.9, hits: [[0.24, 0.42]], reach: 2.4, rad: 2.0, y: 2.0, step: 1.8, next: null, charged: true,
+      keys: [[0, -0.2, 0], [0.22, -0.3, 0], [0.45, -2.7, 0], [1, -2.1, 0]] },
+  };
   function sampleKeys(keys, n) {
     n = clamp(n, 0, 1);
     for (let i = 0; i < keys.length - 1; i++) {
@@ -1353,13 +1457,29 @@
     const l = keys[keys.length - 1];
     return [l[1], l[2]];
   }
+  const lastHitEnd = (a) => a.hits[a.hits.length - 1][1];
 
   function setPState(s) { P.state = s; P.stateT = 0; }
   function startAttack(name, wx, wz, wm) {
-    if (wm > 0.1 && name !== "s2" && name !== "s3") P.yaw = Math.atan2(wx, wz);
+    const first = name === WT().combo || name === "dspin";
+    if (wm > 0.1 && first) P.yaw = Math.atan2(wx, wz);
     else if (wm > 0.1) P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 0.8);
     setPState("attack");
-    P.action = name; P.hitDone = false; P.queued = false; P.swung = false;
+    P.action = name; P.hitMask = 0; P.swungMask = 0; P.queued = false;
+  }
+  // 弓: 竜が前方にいれば、その方へ向き直して狙う
+  function aimAtMonster() {
+    if (M.state === "dead") return null;
+    const target = P_HEAD.w.distanceTo(P.pos) < 30 && Math.random() < 0.5 ? P_HEAD.w : P_BODY.w;
+    const dx = target.x - P.pos.x, dz = target.z - P.pos.z;
+    const ang = Math.atan2(dx, dz);
+    if (Math.hypot(dx, dz) > 48 || Math.abs(angDiff(P.yaw, ang)) > 1.05) return null;
+    P.yaw = ang;
+    return target;
+  }
+  function startShot(lvl) {
+    setPState("shoot");
+    P.shotLvl = lvl; P.fired = false; P.queued = false;
   }
   function tryDodge(wx, wz, wm) {
     if (P.st < 12) return false;
@@ -1379,10 +1499,88 @@
     setPState("drink");
   }
   function movePlayer(dx, dz) { P.pos.x += dx; P.pos.z += dz; }
+  function strongAction(wx, wz, wm) {
+    const W = WT();
+    if (W.id === "dual") {
+      if (!P.dance) {
+        if (P.st < 25) { showMsg("スタミナが足りない"); return; }
+        setPState("danceIn");
+      } else if (P.st >= 10) {
+        P.st -= 12;
+        startAttack("dspin", wx, wz, wm);
+      }
+      return;
+    }
+    setPState("charge"); P.charge = 0; P.chargeLvl = 0;
+    if (wm > 0.1) P.yaw = Math.atan2(wx, wz);
+  }
+  function lightAction(wx, wz, wm) {
+    const W = WT();
+    if (W.id === "bow") { if (wm > 0.1) P.yaw = Math.atan2(wx, wz); startShot(0); }
+    else startAttack(W.combo, wx, wz, wm);
+  }
+
+  // 矢
+  let arrows = [];
+  const arrowGeo = new THREE.CylinderGeometry(0.035, 0.035, 1.0, 4);
+  arrowGeo.rotateX(Math.PI / 2);
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0xf2e0b0 });
+  function fireArrows(lvl) {
+    const W = WT();
+    const n = W.arrows[lvl], dmg = W.arrowDmg[lvl];
+    const target = aimAtMonster();
+    const from = new V3(P.pos.x + Math.sin(P.yaw) * 0.6, P.pos.y + 1.4, P.pos.z + Math.cos(P.yaw) * 0.6);
+    let pitch = 0.03;
+    if (target) { const d = Math.hypot(target.x - from.x, target.z - from.z); pitch = Math.atan2(target.y - from.y, d) + d * 0.0012; }
+    for (let i = 0; i < n; i++) {
+      const yaw = P.yaw + (i - (n - 1) / 2) * 0.04;
+      const v = new V3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(60);
+      const m = new THREE.Mesh(arrowGeo, arrowMat);
+      m.position.copy(from);
+      scene.add(m);
+      arrows.push({ mesh: m, v, life: 0, dmg });
+    }
+    sfx.bow();
+  }
+  function updateArrows(dt) {
+    for (let i = arrows.length - 1; i >= 0; i--) {
+      const a = arrows[i];
+      a.life += dt;
+      a.v.y -= 4 * dt;
+      let hit = null;
+      for (let s = 0; s < 3 && !hit; s++) {
+        a.mesh.position.addScaledVector(a.v, dt / 3);
+        if (M.state !== "dead") {
+          for (const p of parts) {
+            if (p.name === "tail" && M.tailCut && p.seg >= 3) continue;
+            if (p.w.distanceTo(a.mesh.position) < p.r + 0.25) { hit = p; break; }
+          }
+        }
+      }
+      tmpV2.copy(a.mesh.position).add(a.v);
+      a.mesh.lookAt(tmpV2);
+      const pos = a.mesh.position;
+      if (hit) {
+        const dmg = Math.round(a.dmg * hit.mult * (weapon().atk / 100) * (1 + P.gear.atk) * (0.9 + Math.random() * 0.2));
+        damageMonster(dmg, hit, pos.clone(), {});
+        emit(pos, hit.mult >= 1.4 ? 0xff9a4a : 0xfff0c0, 8, 5, { life: 0.3, grav: 10 });
+        sfx.hit(hit.mult >= 1.4);
+        game.hitStop = Math.max(game.hitStop, 0.02);
+      }
+      if (hit || a.life > 1.4 || pos.y < groundH(pos.x, pos.z)) {
+        scene.remove(a.mesh);
+        arrows.splice(i, 1);
+      }
+    }
+  }
+  function clearArrows() { arrows.forEach((a) => scene.remove(a.mesh)); arrows = []; }
 
   function updatePlayer(dt) {
     P.gear = gear();
+    const W = WT();
     P.stateT += dt;
+    // 剣舞中は双剣の攻撃が速くなる
+    if (P.state === "attack" && P.dance && ATTACKS[P.action].dual) P.stateT += dt * 0.3;
     P.iframe = Math.max(0, P.iframe - dt);
     const mv = input.moveVec();
     const fx_ = -Math.sin(cam.yaw), fz_ = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
@@ -1398,30 +1596,37 @@
 
     switch (P.state) {
       case "move": {
-        const wantSprint = input.sprint() && mag > 0.3 && !P.exhausted;
+        const wantSprint = input.sprint() && mag > 0.3 && !P.exhausted && !P.dance;
         if (mag > 0.1) {
-          speed = wantSprint ? 9.5 : 6.2 * Math.max(0.45, mag);
+          speed = (wantSprint ? 9.5 : 6.2 * Math.max(0.45, mag)) * W.moveMul;
           P.sprinting = wantSprint;
           P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 14 * dt);
           movePlayer(wx * speed * dt, wz * speed * dt);
         }
-        if (pr.has("attack")) startAttack("s1", wx, wz, wm);
-        else if (pr.has("strong")) { setPState("charge"); P.charge = 0; P.chargeLvl = 0; if (wm > 0.1) P.yaw = Math.atan2(wx, wz); }
+        if (pr.has("attack")) lightAction(wx, wz, wm);
+        else if (pr.has("strong")) strongAction(wx, wz, wm);
         else if (pr.has("dodge")) tryDodge(wx, wz, wm);
         else if (pr.has("potion")) tryPotion();
         break;
       }
       case "attack": {
         const a = ATTACKS[P.action];
-        if (P.stateT < a.dur * 0.45) {
+        if (a.spin) P.yaw += a.spin * dt;
+        else if (P.stateT < a.dur * 0.45) {
           const st = (a.step / (a.dur * 0.45)) * dt;
           movePlayer(Math.sin(P.yaw) * st, Math.cos(P.yaw) * st);
         }
-        if (!P.swung && P.stateT >= a.hit[0] - 0.05) { P.swung = true; sfx.swing(); }
-        if (P.stateT >= a.hit[0] && P.stateT <= a.hit[1] && !P.hitDone) tryHitMonster(a);
-        if (pr.has("attack") && a.next && P.stateT > a.hit[0] * 0.6) P.queued = true;
-        if (pr.has("dodge") && P.stateT > a.hit[1]) { tryDodge(wx, wz, wm); break; }
-        const endT = P.queued && a.next ? a.hit[1] + 0.06 : a.dur;
+        if (a.spin && wm > 0.1) movePlayer(wx * a.step * dt, wz * a.step * dt);
+        a.hits.forEach(([h0, h1], i) => {
+          const bit = 1 << i;
+          if (!(P.swungMask & bit) && P.stateT >= h0 - 0.05) { P.swungMask |= bit; sfx.swing(); }
+          if (!(P.hitMask & bit) && P.stateT >= h0 && P.stateT <= h1 && tryHitMonster(a)) P.hitMask |= bit;
+        });
+        const end = lastHitEnd(a);
+        if (pr.has("attack") && a.next && P.stateT > a.hits[0][0] * 0.6) P.queued = true;
+        if (pr.has("dodge") && P.stateT > end) { tryDodge(wx, wz, wm); break; }
+        if (pr.has("strong") && P.dance && P.stateT > end && P.action !== "dspin") { strongAction(wx, wz, wm); break; }
+        const endT = P.queued && a.next && !a.noCancel ? end + 0.06 : a.dur;
         if (P.stateT >= endT) {
           if (P.queued && a.next) startAttack(a.next, wx, wz, wm);
           else setPState("move");
@@ -1429,29 +1634,57 @@
         break;
       }
       case "charge": {
-        P.charge += dt * (1 + gear().charge);
-        if (wm > 0.1) P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 3 * dt);
-        const lvl = P.charge >= 1.35 ? 3 : P.charge >= 0.85 ? 2 : P.charge >= 0.4 ? 1 : 0;
+        P.charge += dt * (1 + P.gear.charge);
+        if (W.id === "bow") {
+          // 弓は溜めながらゆっくり歩ける。スタミナを使う
+          P.st -= 8 * (1 - P.gear.stamina) * dt;
+          if (mag > 0.1) { P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 6 * dt); movePlayer(wx * 2.4 * dt, wz * 2.4 * dt); speed = 2.4; }
+        } else if (wm > 0.1) P.yaw = turnToward(P.yaw, Math.atan2(wx, wz), 3 * dt);
+        const L = W.chargeLv;
+        const lvl = P.charge >= L[2] ? 3 : P.charge >= L[1] ? 2 : P.charge >= L[0] ? 1 : 0;
         if (lvl > P.chargeLvl) {
           P.chargeLvl = lvl;
           sfx.charge(lvl);
-          hunter.swordTip.getWorldPosition(tmpV);
+          (W.id === "bow" ? hunter.lhand : hunter.swordTip).getWorldPosition(tmpV);
           emit(tmpV, lvl === 3 ? 0xff7a2f : 0xffd08a, 8 + lvl * 6, 3, { life: 0.4, grav: 2 });
         }
         if (pr.has("dodge")) { tryDodge(wx, wz, wm); break; }
-        if (!input.strongHeld() || P.charge >= 2.0) {
+        if (!input.strongHeld() || P.charge >= L[2] + 0.65 || P.st <= 0) {
           P.heavyLvl = P.chargeLvl;
-          startAttack("heavy", 0, 0, 0);
+          if (W.id === "bow") startShot(P.chargeLvl);
+          else startAttack(W.heavy, 0, 0, 0);
         }
         break;
       }
+      case "shoot": {
+        if (!P.fired && P.stateT >= 0.1) { P.fired = true; fireArrows(P.shotLvl); }
+        if (pr.has("attack") && P.stateT > 0.15) P.queued = true;
+        if (pr.has("dodge") && P.stateT > 0.15) { tryDodge(wx, wz, wm); break; }
+        if (pr.has("strong") && P.stateT > 0.2) { strongAction(wx, wz, wm); break; }
+        if (P.stateT >= 0.42) {
+          if (P.queued) { if (wm > 0.1) P.yaw = Math.atan2(wx, wz); startShot(0); } else setPState("move");
+        }
+        break;
+      }
+      case "danceIn": {
+        if (P.stateT >= 0.4) {
+          P.dance = true;
+          hunter.swordTip.getWorldPosition(tmpV);
+          emit(tmpV.set(P.pos.x, P.pos.y + 1.2, P.pos.z), 0xff3a2a, 40, 6, { life: 0.6, grav: 1 });
+          sfx.charge(3);
+          showMsg("剣舞！");
+          setPState("move");
+        }
+        break;
+      }
+      case "guard": if (P.stateT >= 0.4) setPState("move"); break;
       case "dodge": {
         const t = P.stateT;
         const sp = t < 0.38 ? 11 : 11 * (1 - (t - 0.38) / 0.17) * 0.6;
         movePlayer(P.dodgeX * sp * dt, P.dodgeZ * sp * dt);
         if (pr.has("attack") && t > 0.25) P.queued = true;
         if (t >= 0.55) {
-          if (P.queued) { P.queued = false; startAttack("s1", wx, wz, wm); } else setPState("move");
+          if (P.queued) { P.queued = false; lightAction(wx, wz, wm); } else setPState("move");
         }
         break;
       }
@@ -1495,12 +1728,22 @@
     }
 
     // スタミナ
-    if (P.sprinting) {
-      P.st -= 20 * (1 - gear().stamina) * dt;
+    if (P.dance) {
+      P.st -= 10 * (1 - P.gear.stamina) * dt;
+      if (Math.random() < dt * 10) { hunter.swordTip.getWorldPosition(tmpV); emit(tmpV, 0xff3a2a, 1, 1, { life: 0.4, grav: -1 }); }
+      if (P.st <= 0 || P.state === "faint") {
+        P.st = Math.max(0, P.st); P.dance = false; P.exhausted = true;
+        if (P.state !== "faint") showMsg("剣舞が解けた");
+      }
+    } else if (P.sprinting) {
+      P.st -= 20 * (1 - P.gear.stamina) * dt;
       if (P.st <= 0) { P.st = 0; P.exhausted = true; }
-    } else if (P.state !== "dodge") {
+    } else if (P.state !== "dodge" && P.state !== "charge") {
+      P.st = Math.min(P.maxSt, P.st + 26 * (1 + P.gear.stRegen) * dt);
+    } else if (P.state === "charge" && W.id !== "bow") {
       P.st = Math.min(P.maxSt, P.st + 26 * (1 + P.gear.stRegen) * dt);
     }
+    if (P.st < 0) P.st = 0;
     if (P.exhausted && P.st > 30) P.exhausted = false;
 
     collidePlayer();
@@ -1533,11 +1776,28 @@
     if (r > lim) { P.pos.x *= lim / r; P.pos.z *= lim / r; }
   }
 
-  const pose = { armRx: -0.3, armRy: 0, armLx: -0.2, armLy: 0, wrist: -1.2, torsoX: 0, torsoY: 0, legL: 0, legR: 0, bodyX: 0, bodyY: 0.9, headX: 0 };
+  // 装備中の武器だけを表示し、強攻撃ボタンの名前も合わせる
+  function applyWeaponLook() {
+    const W = WT(), w = hunter.weapons;
+    w.katana.visible = W.id === "katana";
+    w.great.visible = W.id === "great";
+    w.dual.visible = w.dualL.visible = W.id === "dual";
+    w.hammer.visible = W.id === "hammer";
+    w.bow.visible = W.id === "bow";
+    const sb = document.querySelector('.tb[data-act="strong"]');
+    if (sb) sb.textContent = W.strongLabel;
+    const hs = $("hintStrong");
+    if (hs) hs.textContent = W.strongLabel;
+  }
+
+  const pose = { armRx: -0.3, armRy: 0, armLx: -0.2, armLy: 0, wrist: -1.2, lwrist: -1.2, torsoX: 0, torsoY: 0, legL: 0, legR: 0, bodyX: 0, bodyY: 0.9, headX: 0 };
   function animateHunter(dt) {
+    const W = WT();
     const t = {
-      armRx: -0.35, armRy: 0.1, armLx: -0.2, armLy: 0, wrist: -1.2, torsoX: 0, torsoY: 0, legL: 0, legR: 0, bodyX: 0, bodyY: 0.9, headX: 0,
+      armRx: -0.35, armRy: 0.1, armLx: -0.2, armLy: 0, wrist: -1.2, lwrist: W.id === "dual" ? -1.2 : 0, torsoX: 0, torsoY: 0,
+      legL: 0, legR: 0, bodyX: 0, bodyY: 0.9, headX: 0,
     };
+    if (W.id === "bow") { t.lwrist = 0; t.armLx = -0.5; }
     let snap = false;
     switch (P.state) {
       case "move": {
@@ -1545,29 +1805,51 @@
         P.animPh += dt * (P.moveSpeed * 1.5 + 0.001);
         const s = Math.sin(P.animPh) * k * 0.75;
         t.legL = s; t.legR = -s;
-        t.armLx = -0.2 - s * 0.7;
+        t.armLx = (W.id === "bow" ? -0.5 : -0.2) - s * 0.7;
         t.armRx = -0.45 + s * 0.3;
         t.torsoX = P.sprinting ? 0.3 : k * 0.08;
         t.bodyY = 0.9 + Math.abs(Math.cos(P.animPh)) * 0.06 * k;
         if (P.sprinting) { t.armRx = 0.5; t.wrist = -2.2; }
+        if (W.id === "great" || W.id === "hammer") { t.armRx = -0.2 + s * 0.15; t.armLx = -0.5; t.armLy = -0.4; t.wrist = -2.3; }
+        if (P.dance) { t.armRx = -0.9; t.armRy = -0.5; t.armLx = -0.9; t.armLy = 0.5; t.torsoX = 0.2; }
         break;
       }
       case "attack": {
         const a = ATTACKS[P.action];
-        const [x, y] = sampleKeys(a.keys, P.stateT / a.dur);
+        const n = P.stateT / a.dur;
+        const [x, y] = sampleKeys(a.keys, n);
         t.armRx = x; t.armRy = y; t.wrist = 0;
-        t.armLx = x * 0.85; t.armLy = y * 0.9 - 0.3;
-        t.torsoY = y * 0.3; t.torsoX = 0.15;
+        if (a.lkeys) { const [lx, ly] = sampleKeys(a.lkeys, n); t.armLx = lx; t.armLy = ly; t.lwrist = 0; }
+        else { t.armLx = x * 0.85; t.armLy = y * 0.9 - 0.3; }
+        t.torsoY = a.spin ? 0 : y * 0.3; t.torsoX = a.charged || a.big ? 0.25 : 0.15;
         t.legL = 0.4; t.legR = -0.3;
         snap = true;
         break;
       }
       case "charge": {
         const q = reducedMotion ? 0 : Math.sin(P.stateT * 60) * 0.02 * P.chargeLvl;
-        t.armRx = -2.75 + q; t.armRy = 0.1; t.wrist = 0;
-        t.armLx = -2.55; t.armLy = -0.3; t.torsoX = -0.12; t.legL = 0.45; t.legR = -0.35;
+        if (W.id === "bow") {
+          t.armLx = -1.57; t.armLy = 0.15; t.lwrist = 0;
+          t.armRx = -1.57; t.armRy = -0.25 - P.chargeLvl * 0.12; t.wrist = -1.2;
+          t.torsoY = 0.3;
+        } else if (W.id === "hammer") {
+          t.armRx = 0.4 + q; t.armRy = -0.9; t.wrist = -0.4; t.armLx = 0.2; t.armLy = -0.5; t.torsoY = -0.5; t.torsoX = 0.2;
+        } else {
+          t.armRx = -2.75 + q; t.armRy = 0.1; t.wrist = 0;
+          t.armLx = -2.55; t.armLy = -0.3; t.torsoX = -0.12;
+        }
+        t.legL = 0.45; t.legR = -0.35;
         break;
       }
+      case "shoot": {
+        t.armLx = -1.57; t.armLy = 0.15; t.lwrist = 0;
+        const back = P.stateT < 0.1 ? -0.4 : -0.1;
+        t.armRx = -1.57; t.armRy = back; t.wrist = -1.2; t.torsoY = 0.3;
+        snap = P.stateT < 0.02;
+        break;
+      }
+      case "danceIn": t.armRx = -1.9; t.armRy = 0.9; t.armLx = -1.9; t.armLy = -0.9; t.wrist = 0; t.lwrist = 0; t.torsoX = -0.2; break;
+      case "guard": t.armRx = -1.3; t.armRy = 0.7; t.armLx = -1.3; t.armLy = -0.1; t.wrist = -0.3; t.torsoX = 0.2; t.legL = 0.5; t.legR = -0.4; break;
       case "dodge": {
         const n = clamp(P.stateT / 0.5, 0, 1);
         t.bodyX = n * TAU; t.bodyY = 0.9 - Math.sin(n * Math.PI) * 0.45;
@@ -1593,17 +1875,22 @@
     h.armR.rotation.set(pose.armRx, pose.armRy, 0);
     h.armL.rotation.set(pose.armLx, pose.armLy, 0);
     h.sword.rotation.x = pose.wrist;
+    h.lhand.rotation.x = pose.lwrist;
     h.legL.rotation.x = pose.legL;
     h.legR.rotation.x = pose.legR;
-    // 溜めの光
-    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl] : (save.weaponLv >= 10 ? 0x2a0a50 : save.weaponLv >= 8 ? 0x500800 : save.weaponLv >= 6 ? 0x0a3050 : save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
+    // 溜め・剣舞の光、強化段階の色
+    const glow = P.state === "charge" ? [0x000000, 0x5a2a00, 0xa04a00, 0xff7a2f][P.chargeLvl]
+      : P.dance ? 0x901808
+      : (save.weaponLv >= 10 ? 0x2a0a50 : save.weaponLv >= 8 ? 0x500800 : save.weaponLv >= 6 ? 0x0a3050 : save.weaponLv >= 3 ? 0x3a0c00 : 0x000000);
     h.bladeMat.emissive.setHex(glow);
     // 無敵中は少し点滅
     h.root.visible = !(P.state !== "dodge" && P.iframe > 0 && P.state !== "faint" && Math.floor(P.iframe * 16) % 2 === 0 && P.iframe < 1.5 && P.state !== "down");
   }
 
+  // 近接攻撃の当たり判定。当たったら true
   function tryHitMonster(a) {
-    if (M.state === "dead") return;
+    if (M.state === "dead") return false;
+    const W = WT();
     const c = tmpV.set(P.pos.x + Math.sin(P.yaw) * a.reach * 0.65, P.pos.y + a.y, P.pos.z + Math.cos(P.yaw) * a.reach * 0.65);
     let best = null, bestScore = Infinity;
     for (const p of parts) {
@@ -1614,23 +1901,43 @@
         if (score < bestScore) { bestScore = score; best = p; }
       }
     }
-    if (!best) return;
-    P.hitDone = true;
-    const base = P.action === "heavy" ? HEAVY_DMG[P.heavyLvl] : a.dmg;
-    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (1 + gear().atk) * (0.9 + Math.random() * 0.2));
+    if (!best) return false;
+    const base = a.charged ? W.heavyDmg[P.heavyLvl] : a.dmg;
+    const danceMul = P.dance && a.dual ? 1.15 : 1;
+    const dmg = Math.round(base * best.mult * (weapon().atk / 100) * (1 + P.gear.atk) * danceMul * (0.9 + Math.random() * 0.2));
     const at = tmpV2.copy(c).lerp(best.w, 0.6);
-    damageMonster(dmg, best, at);
-    const heavy = P.action === "heavy" || P.action === "s3";
-    game.hitStop = heavy ? 0.09 + P.heavyLvl * 0.025 : 0.05;
+    damageMonster(dmg, best, at, { impact: !!W.impact });
+    const heavy = a.charged || a.big;
+    game.hitStop = heavy ? 0.09 + (a.charged ? P.heavyLvl * 0.025 : 0) : a.dual ? 0.025 : 0.05;
     cam.shake = heavy ? 0.35 : 0.12;
     emit(at, best.mult >= 1.4 ? 0xff9a4a : 0xfff0c0, heavy ? 26 : 14, heavy ? 9 : 6, { life: 0.35, grav: 12 });
     emit(at, SP.colors.blood, 6, 4, { life: 0.5, grav: 14 });
-    if (heavy) sfx.heavyHit(); else sfx.hit(best.mult >= 1.4);
+    if (heavy || W.impact) sfx.heavyHit(); else sfx.hit(best.mult >= 1.4);
+    return true;
   }
 
   // kind: "phys"（体当たり等） / "fire" / "thunder"。防具の防御と耐性で減らす
   function hitPlayer(dmg, down, fromX, fromZ, kind = "phys") {
     if (P.iframe > 0 || P.state === "faint" || game.state !== "play") return false;
+    // 大剣は溜め中に正面からの攻撃を刃で受け止める
+    if (WT().guard && P.state === "charge" && P.st > 0) {
+      const toA = Math.atan2(fromX - P.pos.x, fromZ - P.pos.z);
+      if (Math.abs(angDiff(P.yaw, toA)) < 1.25) {
+        P.st = Math.max(0, P.st - 18);
+        const g = gear();
+        const cut = Math.round(dmg * 0.25 * (1 - g.def));
+        if (!TEST_MODE) P.hp = Math.max(1, P.hp - cut);
+        const d = Math.hypot(P.pos.x - fromX, P.pos.z - fromZ) || 1;
+        P.kx = ((P.pos.x - fromX) / d) * 4; P.kz = ((P.pos.z - fromZ) / d) * 4;
+        hunter.swordTip.getWorldPosition(tmpV);
+        emit(tmpV, 0xfff0c0, 20, 7, { life: 0.3, grav: 8 });
+        sfx.guard();
+        cam.shake = 0.3;
+        setPState("guard");
+        P.iframe = 0.35;
+        return true;
+      }
+    }
     const A = gear();
     const res = kind === "fire" ? A.fireRes : kind === "thunder" ? A.thunderRes : 0;
     dmg = Math.max(1, Math.round(dmg * (1 - A.def) * (1 - res)));
@@ -1683,7 +1990,7 @@
     $("monState").textContent = on ? "怒り" : (M.limp ? "瀕死" : "");
   }
 
-  function damageMonster(dmg, part, at) {
+  function damageMonster(dmg, part, at, opts = {}) {
     M.hp = Math.max(0, M.hp - dmg);
     M.totalDmg += dmg;
     spawnDmgNumber(dmg, at, part.mult >= 1.4);
@@ -1703,7 +2010,19 @@
     }
     if (SP.awaken && !M.awake && !M.pendingAwake && M.hp < M.maxHp * 0.5) M.pendingAwake = true;
     if (!M.enraged && ((!M.firstEnrage && M.hp < M.maxHp * SP.enrageAt) || (M.firstEnrage && M.enrageAcc > 750 * SP.size))) M.pendingEnrage = true;
-    if (M.flinchAcc >= M.flinchTh && !["roar", "dead", "stagger", "flinch"].includes(M.state)) {
+    // ハンマーで頭を叩き続けると気絶する
+    if (opts.impact && part.name === "head" && M.state !== "stunned") {
+      M.stunAcc += dmg;
+      if (M.stunAcc >= M.stunTh && !["dead", "roar"].includes(M.state)) {
+        M.stunAcc = 0; M.stunTh *= 1.6;
+        M.air = 0;
+        setMState("stunned");
+        showMsg(`${SP.short}が気絶した！`);
+        sfx.stun();
+        return;
+      }
+    }
+    if (M.flinchAcc >= M.flinchTh && !["roar", "dead", "stagger", "flinch", "stunned"].includes(M.state)) {
       M.flinchAcc = 0; M.flinchTh *= 1.25;
       setMState("flinch");
     }
@@ -2079,6 +2398,11 @@
         break;
       }
       case "flinch": if (T >= 1.3) { setMState("chase"); M.atkCd = 0.3; } break;
+      case "stunned": {
+        if (Math.random() < 0.5) { mon.hits.head.getWorldPosition(tmpV2); tmpV2.y += 1.2 * SP.size; emit(tmpV2, 0xffe27a, 1, 2, { life: 0.6, grav: -1, spread: 1.2 }); }
+        if (T >= 5.5) { setMState("chase"); M.atkCd = 0.3; }
+        break;
+      }
       case "stagger": if (T >= 2.4) { setMState("chase"); M.atkCd = 0.3; } break;
       case "dead": if (T >= 4.5 && game.state === "play") endQuest(true); break;
     }
@@ -2185,6 +2509,8 @@
         break;
       case "flinch":
         t.neckX = 0.55; t.neckY = Math.sin(T * 18) * 0.3; t.tiltZ = Math.sin(T * 12) * 0.07; t.jaw = 0.5; break;
+      case "stunned":
+        t.neckX = 0.85; t.neckY = Math.sin(M.t * 3) * 0.35; t.tiltZ = 0.4; t.tiltY = -0.4; t.jaw = 0.6; t.legOut = 0.3; tailSway = 0.02; break;
       case "stagger":
         t.neckX = 0.7; t.tiltZ = 0.3 * Math.sin(Math.min(1, T / 2.4) * Math.PI); t.jaw = 0.4; t.legOut = 0.25; break;
       case "dead":
@@ -2362,7 +2688,7 @@
     hunter.plate.color.setHex(c.plate).convertSRGBToLinear();
     hunter.cloth.color.setHex(c.cloth).convertSRGBToLinear();
   }
-  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg", armor: "hunter", armors: ["hunter"], armorSkills: {} });
+  const defaultSave = () => ({ v: 1, updatedAt: 0, hrp: 0, hunts: 0, clears: 0, bestTime: null, best: {}, zenny: 0, weaponLv: 1, items: {}, suspend: null, quest: "valg", armor: "hunter", armors: ["hunter"], armorSkills: {}, wtype: "katana" });
   let skillsRolledOnLoad = false;
   const normalizeSave = (s) => {
     const o = Object.assign(defaultSave(), s);
@@ -2372,6 +2698,7 @@
     o.armors = Array.isArray(o.armors) ? o.armors.slice() : ["hunter"];
     if (!o.armors.includes("hunter")) o.armors.unshift("hunter");
     if (!o.armors.includes(o.armor)) o.armor = "hunter";
+    if (!WTYPES[o.wtype]) o.wtype = "katana";
     o.armorSkills = Object.assign({}, o.armorSkills || {});
     // 持っている防具にスキルがまだ無ければ付ける（以前のセーブ用）
     for (const id of o.armors) {
@@ -2395,6 +2722,15 @@
   }
   const hrOf = () => 1 + Math.floor(save.hrp / 250);
   const weapon = () => WEAPONS[clamp(save.weaponLv, 1, WEAPONS.length) - 1];
+  // 武器の名前は種類ごと。強化段階（攻撃力）は全部の武器で共通
+  const WNAMES = {
+    great: ["鉄大剣", "鉄大剣【改】", "焔大剣ヴァルグ", "焔大剣ヴァルグ改", "焔尾斬破【灼】", "蒼雷大剣ゼルガ", "雷斬【轟】", "獄炎大剣アグニヴァ", "獄炎大剣【焦天】", "天冥大剣ゼノギア", "極星大剣【天冥】"],
+    dual: ["鉄双剣", "鉄双剣【改】", "焔双剣ヴァルグ", "焔双剣ヴァルグ改", "焔尾双牙【灼】", "蒼雷双剣ゼルガ", "雷双爪【轟】", "獄炎双剣アグニヴァ", "獄炎双剣【焦天】", "天冥双剣ゼノギア", "極星双刃【天冥】"],
+    bow: ["鉄弓", "鉄弓【改】", "焔弓ヴァルグ", "焔弓ヴァルグ改", "焔尾弓【灼】", "蒼雷弓ゼルガ", "雷弓【轟】", "獄炎弓アグニヴァ", "獄炎弓【焦天】", "天冥弓ゼノギア", "極星弓【天冥】"],
+    hammer: ["鉄鎚", "鉄鎚【改】", "焔鎚ヴァルグ", "焔鎚ヴァルグ改", "焔尾大鎚【灼】", "蒼雷鎚ゼルガ", "雷鎚【轟】", "獄炎鎚アグニヴァ", "獄炎鎚【焦天】", "天冥鎚ゼノギア", "極星鎚【天冥】"],
+  };
+  const weaponName = (lv = save.weaponLv, type = save.wtype) =>
+    WNAMES[type] ? WNAMES[type][clamp(lv, 1, WEAPONS.length) - 1] : WEAPONS[clamp(lv, 1, WEAPONS.length) - 1].name;
 
   let cloud = null, cloudTimer = 0, localOk = true;
   function writeLocal() {
@@ -2474,6 +2810,7 @@
         save = normalizeSave(remote);
         writeLocal();
         applyArmorLook();
+        applyWeaponLook();
         selectQuest(save.quest);
       } else if (hasProgress(save) || !remoteOk) {
         // 手元の方が進んでいる: アカウントの内容を控えに残してから上書き
@@ -2540,7 +2877,7 @@
     $("pfBestLabel").textContent = `最速（${q.short}）`;
     $("pfBest").textContent = save.best[q.id] == null ? "--:--" : fmtTime(save.best[q.id]);
     $("pfZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
-    $("pfWeapon").textContent = weapon().name;
+    $("pfWeapon").textContent = `${weaponName()}（${WT().name}）`;
     $("pfAtk").textContent = weapon().atk;
     $("pfArmor").textContent = armor().name;
     $("pfDef").textContent = Math.round(gear().def * 100);
@@ -2556,16 +2893,36 @@
   }
 
   // ================= 加工屋 =================
+  function renderWtypes() {
+    const box = $("wtypes");
+    box.innerHTML = "";
+    for (const W of Object.values(WTYPES)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = W.name;
+      b.setAttribute("aria-pressed", String(save.wtype === W.id));
+      b.addEventListener("click", () => {
+        save.wtype = W.id;
+        applyWeaponLook();
+        persist(`${W.name}に持ち替えました`);
+        renderSmith();
+        renderTitle();
+      });
+      box.append(b);
+    }
+    $("wtypeDesc").textContent = WT().desc;
+  }
   function renderSmith() {
     const w = weapon(), next = WEAPONS[save.weaponLv];
-    $("smWeapon").textContent = w.name;
+    $("smWeapon").textContent = weaponName();
+    renderWtypes();
     $("smAtk").textContent = w.atk;
     $("smZenny").textContent = save.zenny.toLocaleString("ja-JP") + "z";
     const cost = $("smCost");
     cost.innerHTML = "";
     let ok = !!next;
     if (next) {
-      $("smNextHead").textContent = `次の強化：${next.name}（攻撃力 ${next.atk}）`;
+      $("smNextHead").textContent = `次の強化：${weaponName(save.weaponLv + 1)}（攻撃力 ${next.atk}）`;
       const rows = Object.entries(next.cost).map(([k, n]) => [MATS[k], save.items[k] || 0, n]);
       rows.push(["所持金", save.zenny, next.z]);
       for (const [name, have, need] of rows) {
@@ -2719,7 +3076,7 @@
     for (const [k, n] of Object.entries(next.cost)) save.items[k] -= n;
     save.zenny -= next.z;
     save.weaponLv++;
-    persist(`${next.name} に強化しました`);
+    persist(`${weaponName()} に強化しました`);
     sfx.clear();
     renderSmith();
     renderTitle();
@@ -2898,6 +3255,7 @@
   window.addEventListener("pagehide", () => { if (game.state === "play" || game.state === "pause") { save.suspend = snapshotQuest(); save.updatedAt = Date.now(); writeLocal(); } });
   $("testBadge").hidden = !TEST_MODE;
   applyArmorLook();
+  applyWeaponLook();
   setSpecies(save.quest);
   resetWorld();
   renderTitle();
@@ -2944,6 +3302,7 @@
       updateMonster(gdt);
       updateFireballs(gdt);
       updateHazards(gdt);
+      updateArrows(gdt);
       if (game.state === "play") {
         updateUI(dt);
         game.saveT += dt;
@@ -2971,6 +3330,10 @@
     if (!isGlLost()) renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);
-  if (location.hash === "#debug") window.__hunt = { P, M, game };
+  // 動作確認用（URL の末尾が #debug のときだけ）。step は描画せずに一定時間だけ進める
+  if (location.hash === "#debug") window.__hunt = {
+    P, M, game, input, arrowCount: () => arrows.length,
+    step(dt) { game.time += dt; updatePlayer(dt); updateMonster(dt); updateFireballs(dt); updateHazards(dt); updateArrows(dt); input.pressed.clear(); },
+  };
 })();
 </script>
