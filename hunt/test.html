@@ -1,6 +1,7 @@
+<!-- 自動生成ファイル: 直接編集せず hunt/make-test.py で index.html から作り直す -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>焔尾竜討伐</title>
+<title>焔尾竜討伐テスト版</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&family=Chakra+Petch:wght@600&display=swap">
@@ -429,7 +430,7 @@
 (() => {
   "use strict";
   // テスト版（test.html）は make-test.py がここを true にして生成する。この本体では常に false。
-  const TEST_MODE = false;
+  const TEST_MODE = true;
   const $ = (id) => document.getElementById(id);
   if (!window.THREE) {
     $("loadErr").hidden = false;
