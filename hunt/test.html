@@ -290,6 +290,7 @@
   .btn.alt { background: #6b3a1c; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .save-note { margin: 0; font-size: 11px; color: #7a6a58; text-align: center; }
+  .btn:disabled { cursor: progress; }
   .cost { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; }
   .cost li { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(23, 19, 15, 0.25); padding-bottom: 4px; }
   .cost li.short b { color: var(--blood); }
@@ -2390,7 +2391,7 @@
   } catch { /* 保存データなし */ }
   // 読み込み時に付けたスキルはすぐ保存して、開き直すたびに変わらないようにする
   if (skillsRolledOnLoad) {
-    save.updatedAt = Date.now();
+    // 更新時刻は進めない。進めると、何も遊んでいないセーブがアカウントのセーブより「新しい」扱いになってしまう
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* 保存できない環境 */ }
   }
   const hrOf = () => 1 + Math.floor(save.hrp / 250);
@@ -2433,30 +2434,60 @@
       ? "セーブ：アカウントに自動保存（ほかの端末でも続きから遊べます）"
       : localOk ? "セーブ：このブラウザに自動保存" : "セーブ：このブラウザでは保存できません";
   }
+  // 2つのセーブのうち進んでいる方か。狩りの回数（減ることがない）で比べ、同じなら新しい方
+  const hunts = (x) => (x && x.hunts) || 0;
+  const isAhead = (a, b) => hunts(a) > hunts(b) || (hunts(a) === hunts(b) && (a.updatedAt || 0) > (b.updatedAt || 0));
+  const hasProgress = (x) => !!x && (hunts(x) > 0 || (x.zenny || 0) > 0 || (x.weaponLv || 1) > 1 || Object.keys(x.items || {}).length > 0);
+  let saveReady = false;
+  function setSaveReady() {
+    if (saveReady) return;
+    saveReady = true;
+    $("startBtn").disabled = false;
+    $("continueBtn").disabled = false;
+    $("saveNote").classList.remove("loading");
+    renderSaveNote();
+  }
   async function initCloud() {
-    if (TEST_MODE) { renderSaveNote(); return; }
+    if (TEST_MODE) { setSaveReady(); return; }
+    // アカウントのセーブを確かめるまで出発できないようにする（読み込み中の上書きを防ぐ）
+    $("startBtn").disabled = true;
+    $("continueBtn").disabled = true;
+    $("saveNote").textContent = "セーブを読み込んでいます…";
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; setSaveReady(); }, 5000);
     try {
       if (!window.claude || typeof window.claude.use !== "function") return;
       const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-      if (!db || !user) return;
+      if (!db || !user || timedOut) return;
       const id = await user.id();
-      if (!id) return;
+      if (!id || timedOut) return;
       const ref = db.doc("data/users/" + id + "/save");
       const snap = await ref.get();
-      cloud = ref;
-      const remote = snap.exists ? snap.data() : null;
-      if (remote && remote.v === 1 && (remote.updatedAt || 0) > (save.updatedAt || 0)) {
-        if (game.state === "title") {
-          save = normalizeSave(JSON.parse(JSON.stringify(remote)));
-          writeLocal();
-          applyArmorLook();
-          selectQuest(save.quest);
+      // 5秒以内に読めなかったときは、このセッションではアカウントに書かない（古い内容で上書きしないため）
+      if (timedOut) return;
+      const remote = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : null;
+      const remoteOk = remote && remote.v === 1;
+      if (remoteOk && !isAhead(save, remote)) {
+        // アカウントの方が進んでいる（または同じ）: そちらを使う。手元の分は控えを残す
+        if (hasProgress(save) && isAhead(save, remote) === false && JSON.stringify(save) !== JSON.stringify(normalizeSave(remote))) {
+          try { localStorage.setItem(SAVE_KEY + "-prev", JSON.stringify(save)); } catch { /* 無視 */ }
         }
-      } else if (save.updatedAt > 0) {
-        pushCloud();
+        save = normalizeSave(remote);
+        writeLocal();
+        applyArmorLook();
+        selectQuest(save.quest);
+      } else if (hasProgress(save) || !remoteOk) {
+        // 手元の方が進んでいる: アカウントの内容を控えに残してから上書き
+        if (remoteOk && hasProgress(remote)) await db.doc("data/users/" + id + "/backup").set(remote).catch(() => {});
+        cloud = ref;
+        await pushCloud();
       }
+      cloud = ref;
     } catch { cloud = null; }
-    renderSaveNote();
+    finally {
+      clearTimeout(timer);
+      setSaveReady();
+    }
   }
 
   // 中断データ
