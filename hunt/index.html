@@ -2294,14 +2294,14 @@
     { name: "極星刃【天冥】", atk: 360, cost: { xorb: 1, xwing: 3, xtail: 1, acore: 1 }, z: 120000 },
   ];
   const ARMORS = [
-    { id: "hunter", name: "ハンター装備", def: 0, hp: 0, skills: ["なし"], slots: [1, 1], bias: 0, reroll: 1000, color: { plate: 0xb9ae98, cloth: 0xd2552a } },
-    { id: "valg", name: "焔尾装備", def: 0.15, hp: 0, fireRes: 0.3, skills: ["火耐性（火のダメージ-30%）"], slots: [1, 2], bias: 0.15, reroll: 3000,
+    { id: "hunter", name: "ハンター装備", def: 0, hp: 0, skills: ["なし"], slots: [2, 2], bias: 0, reroll: 1000, color: { plate: 0xb9ae98, cloth: 0xd2552a } },
+    { id: "valg", name: "焔尾装備", def: 0.15, hp: 0, fireRes: 0.3, skills: ["火耐性（火のダメージ-30%）"], slots: [2, 3], bias: 0.15, reroll: 3000,
       cost: { scale: 4, shell: 2, fang: 1 }, z: 4000, color: { plate: 0x9a4a2a, cloth: 0xffa040 } },
-    { id: "zelga", name: "蒼雷装備", def: 0.25, hp: 0, thunderRes: 0.3, dodge: 0.15, skills: ["雷耐性（雷のダメージ-30%）", "回避性能（回避の無敵が長い）"], slots: [1, 2], bias: 0.3, reroll: 8000,
+    { id: "zelga", name: "蒼雷装備", def: 0.25, hp: 0, thunderRes: 0.3, dodge: 0.15, skills: ["雷耐性（雷のダメージ-30%）", "回避性能（回避の無敵が長い）"], slots: [2, 3], bias: 0.3, reroll: 8000,
       cost: { zscale: 4, zshell: 2, zhorn: 1 }, z: 15000, color: { plate: 0x3a5a8a, cloth: 0x6fd0ff } },
-    { id: "agniva", name: "獄炎装備", def: 0.35, hp: 50, fireRes: 0.4, skills: ["体力+50", "火耐性・大（火のダメージ-40%）"], slots: [2, 2], bias: 0.45, reroll: 20000,
+    { id: "agniva", name: "獄炎装備", def: 0.35, hp: 50, fireRes: 0.4, skills: ["体力+50", "火耐性・大（火のダメージ-40%）"], slots: [3, 3], bias: 0.45, reroll: 20000,
       cost: { ascale: 4, ashell: 3, ahorn: 1, awing: 1 }, z: 40000, color: { plate: 0x3a2622, cloth: 0xff3a10 } },
-    { id: "xenogia", name: "天冥装備", def: 0.45, hp: 30, atk: 0.1, stamina: 0.4, fireRes: 0.2, thunderRes: 0.2, slots: [2, 3], bias: 0.65, reroll: 40000,
+    { id: "xenogia", name: "天冥装備", def: 0.45, hp: 30, atk: 0.1, stamina: 0.4, fireRes: 0.2, thunderRes: 0.2, slots: [3, 4], bias: 0.65, reroll: 40000,
       skills: ["攻撃+10%", "スタミナ消費-40%", "体力+30", "火・雷耐性（-20%）"],
       cost: { xscale: 5, xshell: 3, xwing: 2, xorb: 1 }, z: 100000, color: { plate: 0xd8c07a, cloth: 0xb07cff } },
   ];
@@ -2338,6 +2338,12 @@
     }
     return out;
   }
+  // すでにあるスキルと重ならないものを1つ足す
+  function addOneSkill(a, list) {
+    const extra = rollSkills(Object.assign({}, a, { slots: [list.length + 1, list.length + 1] }))
+      .find((sk) => !list.some((x) => x.id === sk.id));
+    return extra ? list.concat([extra]) : list;
+  }
   const armorSkills = (id) => (save.armorSkills && save.armorSkills[id]) || [];
   // 装備中の防具（固定の性能＋ランダムスキル）をまとめた値
   function gear() {
@@ -2370,7 +2376,10 @@
     for (const id of o.armors) {
       const a = ARMORS.find((x) => x.id === id);
       if (a && !Array.isArray(o.armorSkills[id])) { o.armorSkills[id] = rollSkills(a); skillsRolledOnLoad = true; }
+      // スキル枠が1つ増えた版より前に作った防具には、1つ足しておく（1回だけ）
+      else if (a && !o.extraSkillGiven) { o.armorSkills[id] = addOneSkill(a, o.armorSkills[id]); skillsRolledOnLoad = true; }
     }
+    o.extraSkillGiven = true;
     return o;
   };
   let save = normalizeSave({});
