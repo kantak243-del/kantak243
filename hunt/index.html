@@ -249,6 +249,13 @@
     opacity: 0; transition: opacity .3s; pointer-events: none;
   }
   #saveToast.show { opacity: 1; }
+  #focusGuard {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+    transform: translateX(-50%);
+    padding: 12px 20px; border: 2px solid var(--ember); border-radius: 6px;
+    background: var(--panel); color: var(--bone);
+    font: 700 15px/1.4 var(--body); cursor: pointer; white-space: nowrap;
+  }
 
   @media (max-width: 640px) {
     .monster-panel { top: calc(env(safe-area-inset-top, 0px) + 84px); width: min(64vw, 300px); }
@@ -374,6 +381,7 @@
   </div>
 </div>
 <div id="saveToast"></div>
+<button id="focusGuard" type="button" hidden>キー操作が届いていません ─ ここをクリックして再開</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -1990,7 +1998,18 @@
   }
 
   // ================= 進行 =================
+  function resetInput() {
+    input.keys.clear(); input.pressed.clear();
+    input.mouseStrong = false; input.touchStrong = false;
+    const J = input.joy; J.active = false; J.x = J.y = 0; J.id = null;
+    $("joyBase").hidden = true;
+    document.querySelectorAll(".tb.on").forEach((b) => b.classList.remove("on"));
+  }
+  function grabFocus() {
+    try { window.focus(); canvas.focus({ preventScroll: true }); } catch { /* 無視 */ }
+  }
   function enterPlay() {
+    resetInput();
     game.state = "play";
     game.saveT = 0;
     ["titleScreen", "resultScreen", "pauseScreen", "smithScreen"].forEach((id) => { $(id).hidden = true; });
@@ -1999,8 +2018,7 @@
     hunter.root.visible = true;
     lastClock = "";
     updateUI(0);
-    // 枠の中でもキー入力が届くようにする
-    try { window.focus(); canvas.focus({ preventScroll: true }); } catch { /* 無視 */ }
+    grabFocus();
   }
   function startQuest() {
     initAudio();
@@ -2020,6 +2038,7 @@
   }
   function pause() {
     game.state = "pause";
+    $("focusGuard").hidden = true;
     $("pauseScreen").hidden = false;
     input.keys.clear(); input.mouseStrong = false; input.touchStrong = false;
     if (document.pointerLockElement) document.exitPointerLock?.();
@@ -2027,14 +2046,15 @@
     $("resumeBtn").focus();
   }
   function resume() {
+    resetInput();
     game.state = "play";
     $("pauseScreen").hidden = true;
-    try { window.focus(); canvas.focus({ preventScroll: true }); } catch { /* 無視 */ }
+    grabFocus();
   }
   function toTitle() {
     game.state = "title";
     resetWorld();
-    ["pauseScreen", "resultScreen", "hud", "hint", "monPanel", "smithScreen"].forEach((id) => { $(id).hidden = true; });
+    ["pauseScreen", "resultScreen", "hud", "hint", "monPanel", "smithScreen", "focusGuard"].forEach((id) => { $(id).hidden = true; });
     $("titleScreen").hidden = false;
     renderTitle();
   }
@@ -2043,7 +2063,7 @@
     if (game.state !== "play") return;
     game.state = "result";
     if (document.pointerLockElement) document.exitPointerLock?.();
-    ui.hud.hidden = true; $("hint").hidden = true; $("monPanel").hidden = true;
+    ui.hud.hidden = true; $("hint").hidden = true; $("monPanel").hidden = true; $("focusGuard").hidden = true;
     const time = success ? M.deadAt : game.time;
     $("resTitle").textContent = success ? "狩猟成功" : "クエスト失敗";
     $("resStamp").textContent = success ? "達成" : "失敗";
@@ -2104,6 +2124,7 @@
   $("smithBtn").addEventListener("click", () => { renderSmith(); $("titleScreen").hidden = true; $("smithScreen").hidden = false; });
   $("smithBack").addEventListener("click", () => { $("smithScreen").hidden = true; $("titleScreen").hidden = false; renderTitle(); });
   $("upgradeBtn").addEventListener("click", upgrade);
+  $("focusGuard").addEventListener("click", () => { resetInput(); grabFocus(); $("focusGuard").hidden = true; });
   window.addEventListener("pagehide", () => { if (game.state === "play" || game.state === "pause") { save.suspend = snapshotQuest(); save.updatedAt = Date.now(); writeLocal(); } });
   renderTitle();
   initCloud();
@@ -2135,6 +2156,10 @@
       if (game.state === "play") {
         updateUI(dt);
         game.saveT += dt;
+        if (!isTouch) {
+          game.noFocusT = document.hasFocus() ? 0 : (game.noFocusT || 0) + dt;
+          $("focusGuard").hidden = game.noFocusT < 0.3;
+        }
         if (game.saveT >= 20) { game.saveT = 0; saveSuspend(); }
       }
     } else if (game.state === "title") {
